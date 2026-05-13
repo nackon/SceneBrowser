@@ -1,0 +1,18 @@
+{
+  "name": "tauri-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/react-window": "^1.8.8"
+  },
+  "dependencies": {
+    "react-virtualized-auto-sizer": "^2.0.3",
+    "react-window": "^2.2.7",
+    "zustand": "^5.0.13"
+  }
+}
