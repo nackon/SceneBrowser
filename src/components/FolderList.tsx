@@ -54,11 +54,8 @@ export function FolderList() {
       console.log('Scan complete:', result);
       setScanProgress(null);
 
-      // Refresh video list if this folder is selected
-      if (selectedFolder === folderId) {
-        setVideos([]);
-        setSelectedFolder(folderId); // Trigger refresh
-      }
+      // Select this folder and refresh video list
+      setSelectedFolder(folderId);
     } catch (error) {
       console.error('Failed to scan folder:', error);
     } finally {
