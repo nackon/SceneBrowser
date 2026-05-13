@@ -62,7 +62,9 @@ pub fn get_ffmpeg_version() -> Result<String> {
         .map_err(|e| AppError::FFmpegExecution(e.to_string()))?;
 
     if !output.status.success() {
-        return Err(AppError::FFmpegExecution("Failed to get version".to_string()));
+        return Err(AppError::FFmpegExecution(
+            "Failed to get version".to_string(),
+        ));
     }
 
     let version_string = String::from_utf8_lossy(&output.stdout);
@@ -87,7 +89,9 @@ pub fn get_ffprobe_version() -> Result<String> {
         .map_err(|e| AppError::FFmpegExecution(e.to_string()))?;
 
     if !output.status.success() {
-        return Err(AppError::FFmpegExecution("Failed to get version".to_string()));
+        return Err(AppError::FFmpegExecution(
+            "Failed to get version".to_string(),
+        ));
     }
 
     let version_string = String::from_utf8_lossy(&output.stdout);

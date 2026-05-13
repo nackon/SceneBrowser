@@ -57,9 +57,9 @@ impl MetadataExtractor {
                 "json",
                 "-show_format",
                 "-show_streams",
-                video_path.to_str().ok_or_else(|| {
-                    AppError::InvalidPath("Invalid video path".to_string())
-                })?,
+                video_path
+                    .to_str()
+                    .ok_or_else(|| AppError::InvalidPath("Invalid video path".to_string()))?,
             ])
             .output()
             .map_err(|e| AppError::FFmpegExecution(format!("Failed to run ffprobe: {}", e)))?;
@@ -73,8 +73,9 @@ impl MetadataExtractor {
         }
 
         // Parse JSON output
-        let probe_data: FFprobeOutput = serde_json::from_slice(&output.stdout)
-            .map_err(|e| AppError::InvalidVideo(format!("Failed to parse ffprobe output: {}", e)))?;
+        let probe_data: FFprobeOutput = serde_json::from_slice(&output.stdout).map_err(|e| {
+            AppError::InvalidVideo(format!("Failed to parse ffprobe output: {}", e))
+        })?;
 
         // Extract duration from format
         let duration = probe_data
@@ -87,12 +88,9 @@ impl MetadataExtractor {
         let video_stream = probe_data
             .streams
             .and_then(|streams| {
-                streams.into_iter().find(|s| {
-                    s.codec_type
-                        .as_ref()
-                        .map(|t| t == "video")
-                        .unwrap_or(false)
-                })
+                streams
+                    .into_iter()
+                    .find(|s| s.codec_type.as_ref().map(|t| t == "video").unwrap_or(false))
             })
             .ok_or_else(|| AppError::InvalidVideo("No video stream found".to_string()))?;
 
@@ -146,7 +144,10 @@ mod tests {
     fn test_parse_framerate() {
         assert_eq!(MetadataExtractor::parse_framerate("30/1"), Some(30.0));
         assert_eq!(MetadataExtractor::parse_framerate("60/1"), Some(60.0));
-        assert_eq!(MetadataExtractor::parse_framerate("24000/1001"), Some(23.976023976023978));
+        assert_eq!(
+            MetadataExtractor::parse_framerate("24000/1001"),
+            Some(23.976023976023978)
+        );
         assert_eq!(MetadataExtractor::parse_framerate("invalid"), None);
         assert_eq!(MetadataExtractor::parse_framerate("30/0"), None);
     }

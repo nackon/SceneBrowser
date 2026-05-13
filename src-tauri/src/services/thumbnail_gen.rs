@@ -120,10 +120,7 @@ mod tests {
         let thumbnail_path = ThumbnailGenerator::get_cached_thumbnail_path(video_path);
 
         assert!(thumbnail_path.ends_with(".jpg"));
-        assert!(thumbnail_path
-            .to_str()
-            .unwrap()
-            .contains("thumbnails"));
+        assert!(thumbnail_path.to_str().unwrap().contains("thumbnails"));
     }
 
     #[test]

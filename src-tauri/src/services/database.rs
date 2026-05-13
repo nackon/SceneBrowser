@@ -82,7 +82,7 @@ impl Database {
     /// Get folder by ID
     pub async fn get_folder_by_id(&self, folder_id: i64) -> Result<Folder> {
         let folder = sqlx::query_as::<_, Folder>(
-            "SELECT id, path, recursive, created_at, updated_at FROM folders WHERE id = ?"
+            "SELECT id, path, recursive, created_at, updated_at FROM folders WHERE id = ?",
         )
         .bind(folder_id)
         .fetch_optional(&self.pool)
@@ -115,7 +115,7 @@ impl Database {
             INSERT INTO videos (
                 folder_id, path, filename, hash, duration, width, height, size, codec, framerate
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(video.folder_id)
         .bind(&video.path)
@@ -150,7 +150,7 @@ impl Database {
                 WHERE folder_id = ?
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
-                "#
+                "#,
             )
             .bind(fid)
             .bind(limit)
@@ -166,7 +166,7 @@ impl Database {
                 FROM videos
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
-                "#
+                "#,
             )
             .bind(limit)
             .bind(offset)
@@ -190,7 +190,7 @@ impl Database {
             WHERE filename LIKE ? COLLATE NOCASE OR path LIKE ? COLLATE NOCASE
             ORDER BY created_at DESC
             LIMIT 1000
-            "#
+            "#,
         )
         .bind(&search_pattern)
         .bind(&search_pattern)
@@ -209,7 +209,7 @@ impl Database {
                    created_at, updated_at, scanned_at
             FROM videos
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(video_id)
         .fetch_optional(&self.pool)
@@ -222,7 +222,7 @@ impl Database {
     /// Update video thumbnail path
     pub async fn update_video_thumbnail(&self, video_id: i64, thumbnail_path: &str) -> Result<()> {
         let result = sqlx::query(
-            "UPDATE videos SET thumbnail_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            "UPDATE videos SET thumbnail_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         )
         .bind(thumbnail_path)
         .bind(video_id)
@@ -238,12 +238,10 @@ impl Database {
 
     /// Check if video exists by path
     pub async fn video_exists(&self, path: &str) -> Result<Option<i64>> {
-        let result: Option<(i64,)> = sqlx::query_as(
-            "SELECT id FROM videos WHERE path = ?"
-        )
-        .bind(path)
-        .fetch_optional(&self.pool)
-        .await?;
+        let result: Option<(i64,)> = sqlx::query_as("SELECT id FROM videos WHERE path = ?")
+            .bind(path)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(result.map(|(id,)| id))
     }
@@ -257,7 +255,7 @@ impl Database {
                 size = ?, codec = ?, framerate = ?, updated_at = CURRENT_TIMESTAMP,
                 scanned_at = CURRENT_TIMESTAMP
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(&video.filename)
         .bind(&video.hash)
