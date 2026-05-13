@@ -58,28 +58,38 @@ impl ThumbnailGenerator {
 
         // Generate thumbnail grid with ffmpeg
         // Use fps filter to extract frames at regular intervals, then tile them
-        let output = Command::new(&ffmpeg_path)
-            .args([
-                "-threads",
-                "2", // Use 2 threads per process for faster encoding
-                "-i",
-                video_path_str,
-                "-vf",
-                &format!("fps={},scale=320:-1,tile={}x{}", fps, grid_size, grid_size),
-                "-frames:v",
-                "1",
-                "-q:v",
-                "3",        // JPEG quality (2-5 is good, lower = better quality)
-                "-y",       // Overwrite output file
-                "-nostats", // Disable progress stats
-                "-loglevel",
-                "error", // Only show errors
-                output_path
-                    .to_str()
-                    .ok_or_else(|| AppError::InvalidPath("Invalid output path".to_string()))?,
-            ])
-            .output()
-            .map_err(|e| AppError::FFmpegExecution(format!("Failed to run ffmpeg: {}", e)))?;
+        // Run in blocking task to allow true parallelism
+        let ffmpeg_path_clone = ffmpeg_path.clone();
+        let output_path_clone = output_path.clone();
+        let vf_string = format!("fps={},scale=320:-1,tile={}x{}", fps, grid_size, grid_size);
+        let video_path_string = video_path_str.to_string();
+
+        let output = tokio::task::spawn_blocking(move || {
+            Command::new(&ffmpeg_path_clone)
+                .args([
+                    "-threads",
+                    "2", // Use 2 threads per process for faster encoding
+                    "-i",
+                    &video_path_string,
+                    "-vf",
+                    &vf_string,
+                    "-frames:v",
+                    "1",
+                    "-q:v",
+                    "3",        // JPEG quality (2-5 is good, lower = better quality)
+                    "-y",       // Overwrite output file
+                    "-nostats", // Disable progress stats
+                    "-loglevel",
+                    "error", // Only show errors
+                    output_path_clone
+                        .to_str()
+                        .ok_or_else(|| AppError::InvalidPath("Invalid output path".to_string()))?,
+                ])
+                .output()
+                .map_err(|e| AppError::FFmpegExecution(format!("Failed to run ffmpeg: {}", e)))
+        })
+        .await
+        .map_err(|e| AppError::FFmpegExecution(format!("Failed to spawn ffmpeg task: {}", e)))??;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
