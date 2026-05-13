@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { VideoGrid } from './components/VideoGrid';
 import { useVideoStore } from './store/videoStore';
