@@ -52,25 +52,18 @@ impl ThumbnailGenerator {
             | crate::utils::ffmpeg::FFmpegSource::System(path) => path,
         };
 
-        // Use thumbnail filter which is optimized for creating thumbnails
-        // Calculate how many seconds between each thumbnail
-        let interval = duration / (thumbnail_count as f64 + 1.0);
+        // Calculate fps to extract exactly thumbnail_count frames
+        // fps = total_frames / duration, where total_frames = thumbnail_count
+        let fps = thumbnail_count as f64 / duration;
 
-        // Generate thumbnail grid with ffmpeg using thumbnail filter
-        // The thumbnail filter is specifically designed for this use case and is fast
+        // Generate thumbnail grid with ffmpeg
+        // Use fps filter to extract frames at regular intervals, then tile them
         let output = Command::new(&ffmpeg_path)
             .args([
-                "-skip_frame",
-                "nokey", // Only decode keyframes for speed
                 "-i",
                 video_path_str,
                 "-vf",
-                &format!(
-                    "thumbnail={},scale=320:-1,tile={}x{}",
-                    (interval * 30.0) as i64, // Assume 30fps, extract best frame every N frames
-                    grid_size,
-                    grid_size
-                ),
+                &format!("fps={},scale=320:-1,tile={}x{}", fps, grid_size, grid_size),
                 "-frames:v",
                 "1",
                 "-y", // Overwrite output file
