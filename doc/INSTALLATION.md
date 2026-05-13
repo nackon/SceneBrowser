@@ -39,9 +39,34 @@ xattr -cr ~/Downloads/SceneBrowser-dev.dmg
 
 ## トラブルシューティング
 
+### 「マルウェアが含まれていないことを検証できませんでした」エラー
+
+これはmacOSのGatekeeperによる警告で、開発ビルドがAppleの公証（Notarization）を受けていないために表示されます。**アプリは安全です。**
+
+**解決方法1: ターミナルコマンド（最も確実）:**
+
+```bash
+# アプリをApplicationsにコピー後、ターミナルで実行
+xattr -cr /Applications/SceneBrowser.app
+
+# その後、Finderでダブルクリックして起動
+```
+
+**解決方法2: 右クリックから開く:**
+
+1. Finderで `/Applications/SceneBrowser.app` を探す
+2. **右クリック** → **開く** を選択
+3. 警告ダイアログで **開く** をクリック
+
+**解決方法3: システム設定から許可（macOS Ventura以降）:**
+
+1. アプリを開こうとして警告が出る
+2. システム設定 → プライバシーとセキュリティ を開く
+3. **このまま開く** をクリック
+
 ### 「SceneBrowserは壊れているため開けません」エラー
 
-これはmacOSのGatekeeperによるもので、アプリが壊れているわけではありません。
+これもGatekeeperによるもので、アプリが壊れているわけではありません。
 
 **解決方法:**
 

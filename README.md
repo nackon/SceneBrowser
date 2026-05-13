@@ -20,10 +20,10 @@ To download and install a development build:
 4. Unzip the artifact to get the DMG file
 5. Open the DMG file and drag SceneBrowser to Applications
 
-**Important:** Development builds are ad-hoc signed. On first launch:
-- macOS may show "SceneBrowser is damaged" error
-- To fix: Right-click the app → Open → Click "Open" in the dialog
-- Or use Terminal: `xattr -cr /Applications/SceneBrowser.app`
+**Important:** Development builds are ad-hoc signed. macOS Gatekeeper may show warnings:
+- "contains malware" or "is damaged" error
+- **Quick fix:** `xattr -cr /Applications/SceneBrowser.app` in Terminal
+- Or: Right-click the app → Open → Click "Open" in the dialog
 - See [Installation Guide](doc/INSTALLATION.md) for detailed instructions
 
 **Note:** Development builds are retained for 30 days.
