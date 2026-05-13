@@ -18,6 +18,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache system dependencies
+        id: cache-apt
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -35,18 +44,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build frontend (required for tauri context)
-        run: npm run build
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
