@@ -104,7 +104,13 @@
   text-overflow: ellipsis;
 }
 
-.btn-scan {
+.folder-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-scan,
+.btn-thumbnail {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -115,12 +121,39 @@
   transition: all 0.2s;
 }
 
-.btn-scan:hover {
+.btn-scan:hover,
+.btn-thumbnail:hover {
   background: var(--bg-hover);
   border-color: var(--accent-color);
 }
 
-.btn-scan:disabled {
+.btn-scan:disabled,
+.btn-thumbnail:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.thumbnail-progress {
+  padding: 12px 20px;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border-color);
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.3s ease;
 }

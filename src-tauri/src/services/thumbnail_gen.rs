@@ -60,13 +60,20 @@ impl ThumbnailGenerator {
         // Use fps filter to extract frames at regular intervals, then tile them
         let output = Command::new(&ffmpeg_path)
             .args([
+                "-threads",
+                "2", // Use 2 threads per process for faster encoding
                 "-i",
                 video_path_str,
                 "-vf",
                 &format!("fps={},scale=320:-1,tile={}x{}", fps, grid_size, grid_size),
                 "-frames:v",
                 "1",
-                "-y", // Overwrite output file
+                "-q:v",
+                "3",        // JPEG quality (2-5 is good, lower = better quality)
+                "-y",       // Overwrite output file
+                "-nostats", // Disable progress stats
+                "-loglevel",
+                "error", // Only show errors
                 output_path
                     .to_str()
                     .ok_or_else(|| AppError::InvalidPath("Invalid output path".to_string()))?,

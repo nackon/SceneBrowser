@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { getFolders, addFolder, scanFolder } from '../services/commands';
+import { getFolders, addFolder, scanFolder, generateThumbnailsBatch } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
 import type { Folder } from '../types/video';
 import './FolderList.css';
@@ -8,6 +8,8 @@ import './FolderList.css';
 export function FolderList() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
+  const [thumbnailProgress, setThumbnailProgress] = useState<{ current: number; total: number } | null>(null);
   const { selectedFolder, setSelectedFolder, setScanProgress, setVideos } = useVideoStore();
 
   useEffect(() => {
@@ -63,6 +65,32 @@ export function FolderList() {
     }
   }
 
+  async function handleGenerateThumbnails(folderId: number) {
+    setGeneratingThumbnails(true);
+    setThumbnailProgress(null);
+    try {
+      const generated = await generateThumbnailsBatch(folderId, (progress) => {
+        setThumbnailProgress({
+          current: progress.current,
+          total: progress.total,
+        });
+      });
+
+      console.log(`Generated ${generated} thumbnails`);
+      setThumbnailProgress(null);
+
+      // Refresh video list to show new thumbnails
+      if (selectedFolder === folderId) {
+        setVideos([]); // Force reload
+        setSelectedFolder(folderId);
+      }
+    } catch (error) {
+      console.error('Failed to generate thumbnails:', error);
+    } finally {
+      setGeneratingThumbnails(false);
+    }
+  }
+
   return (
     <div className="folder-list">
       <div className="folder-list-header">
@@ -95,17 +123,41 @@ export function FolderList() {
                   <div className="folder-full-path">{folder.path}</div>
                 </div>
               </div>
-              <button
-                onClick={() => handleScanFolder(folder.id)}
-                disabled={scanning}
-                className="btn-scan"
-                title="Scan folder"
-              >
-                🔄
-              </button>
+              <div className="folder-actions">
+                <button
+                  onClick={() => handleScanFolder(folder.id)}
+                  disabled={scanning}
+                  className="btn-scan"
+                  title="Scan folder"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={() => handleGenerateThumbnails(folder.id)}
+                  disabled={generatingThumbnails}
+                  className="btn-thumbnail"
+                  title="Generate thumbnails"
+                >
+                  🖼️
+                </button>
+              </div>
             </li>
           ))}
         </ul>
+      )}
+      {thumbnailProgress && (
+        <div className="thumbnail-progress">
+          <div className="progress-text">
+            Generating thumbnails... {thumbnailProgress.current}/{thumbnailProgress.total} (
+            {Math.round((thumbnailProgress.current / thumbnailProgress.total) * 100)}%)
+          </div>
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${(thumbnailProgress.current / thumbnailProgress.total) * 100}%` }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
