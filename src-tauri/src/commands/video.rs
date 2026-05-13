@@ -3,7 +3,7 @@ use crate::models::{Video, VideoInsert};
 use crate::services::{MetadataExtractor, VideoScanner};
 use crate::utils::compute_file_hash;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::PathBuf;
 use tauri::{Emitter, State};
 
 /// Result of a folder scan operation
@@ -30,19 +30,28 @@ pub async fn scan_folder(
     window: tauri::Window,
     state: State<'_, AppState>,
 ) -> Result<ScanResult, String> {
-    let db = state.db.lock().await;
+    let db_manager = state.db_manager.lock().await;
 
-    // Get folder info
-    let folder = db
+    // Get folder info from global database
+    let global_db = db_manager.global_db();
+    let folder = global_db
         .get_folder_by_id(folder_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    drop(db); // Release lock before long-running operations
+    let folder_path = PathBuf::from(&folder.path);
+
+    // Get folder database
+    let folder_db = db_manager
+        .get_folder_db(&folder_path)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    drop(db_manager); // Release lock before long-running operations
 
     // Scan directory for video files
-    let video_paths = VideoScanner::scan_directory(Path::new(&folder.path), folder.recursive)
-        .map_err(|e| e.to_string())?;
+    let video_paths =
+        VideoScanner::scan_directory(&folder_path, folder.recursive).map_err(|e| e.to_string())?;
 
     let total = video_paths.len();
     let mut added = 0;
@@ -99,7 +108,6 @@ pub async fn scan_folder(
             .to_string();
 
         let video_insert = VideoInsert {
-            folder_id,
             path: video_path.to_string_lossy().to_string(),
             filename,
             hash,
@@ -112,11 +120,10 @@ pub async fn scan_folder(
         };
 
         // Check if video already exists
-        let db = state.db.lock().await;
-        match db.video_exists(&video_insert.path).await {
+        match folder_db.video_exists(&video_insert.path).await {
             Ok(Some(video_id)) => {
                 // Update existing video
-                if let Err(e) = db.update_video(video_id, &video_insert).await {
+                if let Err(e) = folder_db.update_video(video_id, &video_insert).await {
                     errors.push(format!(
                         "{}: Failed to update - {}",
                         video_path.display(),
@@ -128,7 +135,7 @@ pub async fn scan_folder(
             }
             Ok(None) => {
                 // Add new video
-                if let Err(e) = db.add_video(&video_insert).await {
+                if let Err(e) = folder_db.add_video(&video_insert).await {
                     errors.push(format!("{}: Failed to add - {}", video_path.display(), e));
                 } else {
                     added += 1;
@@ -138,7 +145,6 @@ pub async fn scan_folder(
                 errors.push(format!("{}: Database error - {}", video_path.display(), e));
             }
         }
-        drop(db);
     }
 
     Ok(ScanResult {
@@ -157,10 +163,38 @@ pub async fn get_videos(
     offset: i64,
     state: State<'_, AppState>,
 ) -> Result<Vec<Video>, String> {
-    let db = state.db.lock().await;
-    db.get_videos(folder_id, limit, offset)
-        .await
-        .map_err(|e| e.to_string())
+    let db_manager = state.db_manager.lock().await;
+
+    if let Some(fid) = folder_id {
+        // Get videos from specific folder
+        let global_db = db_manager.global_db();
+        let folder = global_db
+            .get_folder_by_id(fid)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let folder_path = PathBuf::from(&folder.path);
+        let folder_db = db_manager
+            .get_folder_db(&folder_path)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        folder_db
+            .get_videos(limit, offset)
+            .await
+            .map_err(|e| e.to_string())
+    } else {
+        // Get videos from all folders
+        let all_videos = db_manager
+            .get_all_videos()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // Apply pagination
+        let start = offset as usize;
+        let end = (start + limit as usize).min(all_videos.len());
+        Ok(all_videos[start..end].to_vec())
+    }
 }
 
 /// Search videos by filename or path
@@ -169,15 +203,33 @@ pub async fn search_videos(
     query: String,
     state: State<'_, AppState>,
 ) -> Result<Vec<Video>, String> {
-    let db = state.db.lock().await;
-    db.search_videos(&query).await.map_err(|e| e.to_string())
+    let db_manager = state.db_manager.lock().await;
+    db_manager
+        .search_all_videos(&query)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Get a specific video by ID
+/// Note: This searches across all folders since we don't know which folder contains the video
 #[tauri::command]
 pub async fn get_video_by_id(video_id: i64, state: State<'_, AppState>) -> Result<Video, String> {
-    let db = state.db.lock().await;
-    db.get_video_by_id(video_id)
-        .await
-        .map_err(|e| e.to_string())
+    let db_manager = state.db_manager.lock().await;
+    let global_db = db_manager.global_db();
+    let folders = global_db.get_folders().await.map_err(|e| e.to_string())?;
+
+    // Search in each folder database
+    for folder in folders {
+        let folder_path = PathBuf::from(&folder.path);
+        let folder_db = db_manager
+            .get_folder_db(&folder_path)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Ok(video) = folder_db.get_video_by_id(video_id).await {
+            return Ok(video);
+        }
+    }
+
+    Err(format!("Video with ID {} not found", video_id))
 }

@@ -1,7 +1,7 @@
 use crate::commands::folder::AppState;
 use crate::services::ThumbnailGenerator;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 /// Generate a thumbnail for a video
@@ -10,15 +10,33 @@ pub async fn generate_thumbnail(
     video_id: i64,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let db = state.db.lock().await;
+    let db_manager = state.db_manager.lock().await;
 
-    // Get video info
-    let video = db
-        .get_video_by_id(video_id)
-        .await
-        .map_err(|e| format!("Failed to get video info: {}", e))?;
+    // Search for video in all folders
+    let global_db = db_manager.global_db();
+    let folders = global_db.get_folders().await.map_err(|e| e.to_string())?;
 
-    drop(db); // Release lock before long operation
+    let mut video_opt = None;
+    let mut folder_path_opt = None;
+
+    for folder in folders {
+        let folder_path = PathBuf::from(&folder.path);
+        let folder_db = db_manager
+            .get_folder_db(&folder_path)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Ok(video) = folder_db.get_video_by_id(video_id).await {
+            video_opt = Some(video);
+            folder_path_opt = Some(folder_path);
+            break;
+        }
+    }
+
+    let video = video_opt.ok_or_else(|| format!("Video with ID {} not found", video_id))?;
+    let folder_path = folder_path_opt.unwrap();
+
+    drop(db_manager); // Release lock before long operation
 
     // Generate thumbnail
     let thumbnail_path = ThumbnailGenerator::generate(
@@ -34,11 +52,14 @@ pub async fn generate_thumbnail(
     // Update database with thumbnail path in a separate task to avoid blocking
     let state_clone = state.inner().clone();
     let thumbnail_path_clone = thumbnail_path_str.clone();
+    let folder_path_clone = folder_path.clone();
     tokio::spawn(async move {
-        let db = state_clone.db.lock().await;
-        let _ = db
-            .update_video_thumbnail(video_id, &thumbnail_path_clone)
-            .await;
+        let db_manager = state_clone.db_manager.lock().await;
+        if let Ok(folder_db) = db_manager.get_folder_db(&folder_path_clone).await {
+            let _ = folder_db
+                .update_video_thumbnail(video_id, &thumbnail_path_clone)
+                .await;
+        }
     });
 
     Ok(thumbnail_path_str)

@@ -1,17 +1,23 @@
 use crate::error::{AppError, Result};
 use crate::models::{Folder, Video, VideoInsert};
+use crate::utils::paths::{get_database_path, get_database_path_for_folder, get_scenebrowser_dir};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-/// Database service for managing SQLite operations
-pub struct Database {
+/// Global database service for managing folders
+pub struct GlobalDatabase {
     pool: SqlitePool,
 }
 
-impl Database {
-    /// Create a new database connection and run migrations
-    pub async fn new(db_path: PathBuf) -> Result<Self> {
+impl GlobalDatabase {
+    /// Create a new global database connection
+    pub async fn new() -> Result<Self> {
+        let db_path = get_database_path();
+
         // Ensure parent directory exists
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -92,7 +98,7 @@ impl Database {
         Ok(folder)
     }
 
-    /// Remove a folder (cascades to videos)
+    /// Remove a folder
     pub async fn remove_folder(&self, folder_id: i64) -> Result<()> {
         let result = sqlx::query("DELETE FROM folders WHERE id = ?")
             .bind(folder_id)
@@ -105,6 +111,52 @@ impl Database {
 
         Ok(())
     }
+}
+
+/// Per-folder database service for managing videos
+pub struct FolderDatabase {
+    pool: SqlitePool,
+    #[allow(dead_code)]
+    folder_path: PathBuf,
+}
+
+impl FolderDatabase {
+    /// Create a new folder database connection
+    pub async fn new(folder_path: &Path) -> Result<Self> {
+        let scenebrowser_dir = get_scenebrowser_dir(folder_path);
+        std::fs::create_dir_all(&scenebrowser_dir)?;
+
+        let db_path = get_database_path_for_folder(folder_path);
+
+        // Create connection options
+        let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path.display()))?
+            .create_if_missing(true);
+
+        // Create connection pool
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect_with(options)
+            .await?;
+
+        // Run migrations
+        Self::run_migrations(&pool).await?;
+
+        Ok(Self {
+            pool,
+            folder_path: folder_path.to_path_buf(),
+        })
+    }
+
+    /// Run database migrations
+    async fn run_migrations(pool: &SqlitePool) -> Result<()> {
+        // Read per-folder migration file
+        let migration_sql = include_str!("../../migrations/per_folder_schema.sql");
+
+        // Execute migration
+        sqlx::query(migration_sql).execute(pool).await?;
+
+        Ok(())
+    }
 
     // --- Video Operations ---
 
@@ -113,11 +165,10 @@ impl Database {
         let result = sqlx::query(
             r#"
             INSERT INTO videos (
-                folder_id, path, filename, hash, duration, width, height, size, codec, framerate
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                path, filename, hash, duration, width, height, size, codec, framerate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
-        .bind(video.folder_id)
         .bind(&video.path)
         .bind(&video.filename)
         .bind(&video.hash)
@@ -134,45 +185,21 @@ impl Database {
     }
 
     /// Get videos with pagination
-    pub async fn get_videos(
-        &self,
-        folder_id: Option<i64>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<Video>> {
-        let videos = if let Some(fid) = folder_id {
-            sqlx::query_as::<_, Video>(
-                r#"
-                SELECT id, folder_id, path, filename, hash, duration, width, height, size,
-                       codec, framerate, thumbnail_path, thumbnail_count, rating,
-                       created_at, updated_at, scanned_at
-                FROM videos
-                WHERE folder_id = ?
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-                "#,
-            )
-            .bind(fid)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&self.pool)
-            .await?
-        } else {
-            sqlx::query_as::<_, Video>(
-                r#"
-                SELECT id, folder_id, path, filename, hash, duration, width, height, size,
-                       codec, framerate, thumbnail_path, thumbnail_count, rating,
-                       created_at, updated_at, scanned_at
-                FROM videos
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-                "#,
-            )
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&self.pool)
-            .await?
-        };
+    pub async fn get_videos(&self, limit: i64, offset: i64) -> Result<Vec<Video>> {
+        let videos = sqlx::query_as::<_, Video>(
+            r#"
+            SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   created_at, updated_at, scanned_at
+            FROM videos
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
 
         Ok(videos)
     }
@@ -183,7 +210,7 @@ impl Database {
 
         let videos = sqlx::query_as::<_, Video>(
             r#"
-            SELECT id, folder_id, path, filename, hash, duration, width, height, size,
+            SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
                    codec, framerate, thumbnail_path, thumbnail_count, rating,
                    created_at, updated_at, scanned_at
             FROM videos
@@ -204,7 +231,7 @@ impl Database {
     pub async fn get_video_by_id(&self, video_id: i64) -> Result<Video> {
         let video = sqlx::query_as::<_, Video>(
             r#"
-            SELECT id, folder_id, path, filename, hash, duration, width, height, size,
+            SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
                    codec, framerate, thumbnail_path, thumbnail_count, rating,
                    created_at, updated_at, scanned_at
             FROM videos
@@ -274,5 +301,106 @@ impl Database {
         }
 
         Ok(())
+    }
+
+    /// Get all videos (no pagination)
+    pub async fn get_all_videos(&self) -> Result<Vec<Video>> {
+        let videos = sqlx::query_as::<_, Video>(
+            r#"
+            SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   created_at, updated_at, scanned_at
+            FROM videos
+            ORDER BY created_at DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(videos)
+    }
+}
+
+/// Database manager that coordinates global and per-folder databases
+pub struct DatabaseManager {
+    global_db: Arc<GlobalDatabase>,
+    folder_dbs: Arc<RwLock<HashMap<String, Arc<FolderDatabase>>>>,
+}
+
+impl DatabaseManager {
+    /// Create a new database manager
+    pub async fn new() -> Result<Self> {
+        let global_db = GlobalDatabase::new().await?;
+
+        Ok(Self {
+            global_db: Arc::new(global_db),
+            folder_dbs: Arc::new(RwLock::new(HashMap::new())),
+        })
+    }
+
+    /// Get the global database
+    pub fn global_db(&self) -> Arc<GlobalDatabase> {
+        Arc::clone(&self.global_db)
+    }
+
+    /// Get or create a folder database
+    pub async fn get_folder_db(&self, folder_path: &Path) -> Result<Arc<FolderDatabase>> {
+        let folder_path_str = folder_path.to_string_lossy().to_string();
+
+        // Check if already cached
+        {
+            let dbs = self.folder_dbs.read().await;
+            if let Some(db) = dbs.get(&folder_path_str) {
+                return Ok(Arc::clone(db));
+            }
+        }
+
+        // Create new folder database
+        let folder_db = FolderDatabase::new(folder_path).await?;
+        let folder_db = Arc::new(folder_db);
+
+        // Cache it
+        {
+            let mut dbs = self.folder_dbs.write().await;
+            dbs.insert(folder_path_str, Arc::clone(&folder_db));
+        }
+
+        Ok(folder_db)
+    }
+
+    /// Get all videos from all folders
+    pub async fn get_all_videos(&self) -> Result<Vec<Video>> {
+        let folders = self.global_db.get_folders().await?;
+        let mut all_videos = Vec::new();
+
+        for folder in folders {
+            let folder_path = PathBuf::from(&folder.path);
+            let folder_db = self.get_folder_db(&folder_path).await?;
+            let videos = folder_db.get_all_videos().await?;
+            all_videos.extend(videos);
+        }
+
+        // Sort by created_at descending
+        all_videos.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+
+        Ok(all_videos)
+    }
+
+    /// Search videos across all folders
+    pub async fn search_all_videos(&self, query: &str) -> Result<Vec<Video>> {
+        let folders = self.global_db.get_folders().await?;
+        let mut all_videos = Vec::new();
+
+        for folder in folders {
+            let folder_path = PathBuf::from(&folder.path);
+            let folder_db = self.get_folder_db(&folder_path).await?;
+            let videos = folder_db.search_videos(query).await?;
+            all_videos.extend(videos);
+        }
+
+        // Sort by created_at descending
+        all_videos.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+
+        Ok(all_videos)
     }
 }
