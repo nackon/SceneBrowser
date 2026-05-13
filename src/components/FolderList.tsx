@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { getFolders, addFolder, scanFolder, generateThumbnailsBatch } from '../services/commands';
+import { getFolders, addFolder, scanFolder, generateThumbnailsBatch, getVideos } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
 import type { Folder } from '../types/video';
 import './FolderList.css';
@@ -10,7 +10,7 @@ export function FolderList() {
   const [scanning, setScanning] = useState(false);
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState<{ current: number; total: number } | null>(null);
-  const { selectedFolder, setSelectedFolder, setScanProgress, setVideos } = useVideoStore();
+  const { selectedFolder, setSelectedFolder, setScanProgress, setVideos, setIsLoading } = useVideoStore();
 
   useEffect(() => {
     loadFolders();
@@ -56,16 +56,22 @@ export function FolderList() {
       console.log('Scan complete:', result);
       setScanProgress(null);
 
-      // Select this folder and refresh video list
+      // Refresh video list by manually fetching
+      setIsLoading(true);
+      const videos = await getVideos(folderId, 100, 0);
+      setVideos(videos);
       setSelectedFolder(folderId);
+      setIsLoading(false);
     } catch (error) {
       console.error('Failed to scan folder:', error);
+      setIsLoading(false);
     } finally {
       setScanning(false);
     }
   }
 
   async function handleGenerateThumbnails(folderId: number) {
+    console.log('handleGenerateThumbnails called with folderId:', folderId);
     setGeneratingThumbnails(true);
     setThumbnailProgress(null);
     try {
