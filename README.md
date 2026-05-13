@@ -1,5 +1,8 @@
 # SceneBrowser
 
+[![CI](https://github.com/nackon/SceneBrowser/actions/workflows/ci.yml/badge.svg)](https://github.com/nackon/SceneBrowser/actions/workflows/ci.yml)
+[![Release](https://github.com/nackon/SceneBrowser/actions/workflows/release.yml/badge.svg)](https://github.com/nackon/SceneBrowser/actions/workflows/release.yml)
+
 A macOS video collection management application with multiple thumbnail preview.
 
 ## Quick Start
