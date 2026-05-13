@@ -12,6 +12,12 @@ export function useVideos(folderId: number | null, limit = 100) {
     let cancelled = false;
 
     async function fetchVideos() {
+      if (folderId === null) {
+        setVideos([]);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 

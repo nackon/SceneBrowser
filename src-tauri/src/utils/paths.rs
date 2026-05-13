@@ -1,6 +1,22 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// Get the application data directory
+/// Get the .scenebrowser directory for a folder
+pub fn get_scenebrowser_dir(folder_path: &Path) -> PathBuf {
+    folder_path.join(".scenebrowser")
+}
+
+/// Get the database file path for a folder
+#[allow(dead_code)]
+pub fn get_database_path_for_folder(folder_path: &Path) -> PathBuf {
+    get_scenebrowser_dir(folder_path).join("db.sqlite")
+}
+
+/// Get the thumbnail cache directory for a folder
+pub fn get_thumbnail_cache_dir_for_folder(folder_path: &Path) -> PathBuf {
+    get_scenebrowser_dir(folder_path).join("thumbnails")
+}
+
+/// Get the global app data directory (for storing folder list only)
 pub fn get_app_data_dir() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
@@ -26,12 +42,12 @@ pub fn get_app_data_dir() -> PathBuf {
     }
 }
 
-/// Get the database file path
+/// Get the global database path (for storing folder list only)
 pub fn get_database_path() -> PathBuf {
     get_app_data_dir().join("scenebrowser.db")
 }
 
-/// Get the thumbnail cache directory
+/// Get the thumbnail cache directory (deprecated - use get_thumbnail_cache_dir_for_folder instead)
 pub fn get_thumbnail_cache_dir() -> PathBuf {
     get_app_data_dir().join("thumbnails")
 }

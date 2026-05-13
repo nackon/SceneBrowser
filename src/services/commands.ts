@@ -61,3 +61,13 @@ export async function getVideoById(videoId: number): Promise<Video> {
 export async function generateThumbnail(videoId: number): Promise<string> {
   return await invoke<string>('generate_thumbnail', { videoId });
 }
+
+export async function readThumbnail(thumbnailPath: string): Promise<string> {
+  return await invoke<string>('read_thumbnail', { thumbnailPath });
+}
+
+// --- System Commands ---
+
+export async function checkFFmpeg(): Promise<void> {
+  await invoke('check_ffmpeg');
+}

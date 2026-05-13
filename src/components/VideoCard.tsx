@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { generateThumbnail } from '../services/commands';
+import { generateThumbnail, readThumbnail } from '../services/commands';
 import type { Video } from '../types/video';
 import './VideoCard.css';
 
@@ -15,19 +14,36 @@ export function VideoCard({ video }: VideoCardProps) {
 
   useEffect(() => {
     if (video.thumbnail_path) {
-      setThumbnailUrl(convertFileSrc(video.thumbnail_path));
+      // Read thumbnail as base64 data URL
+      loadThumbnail(video.thumbnail_path);
     } else {
       // Generate thumbnail if not exists
       generateThumbnailAsync();
     }
   }, [video.id, video.thumbnail_path]);
 
+  async function loadThumbnail(thumbnailPath: string) {
+    setLoading(true);
+    setError(false);
+    try {
+      const dataUrl = await readThumbnail(thumbnailPath);
+      setThumbnailUrl(dataUrl);
+    } catch (err) {
+      console.error('Failed to load thumbnail:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function generateThumbnailAsync() {
     setLoading(true);
     setError(false);
     try {
       const path = await generateThumbnail(video.id);
-      setThumbnailUrl(convertFileSrc(path));
+      // Load the generated thumbnail
+      const dataUrl = await readThumbnail(path);
+      setThumbnailUrl(dataUrl);
     } catch (err) {
       console.error('Failed to generate thumbnail:', err);
       setError(true);

@@ -5,6 +5,7 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 /// Application state
+#[derive(Clone)]
 pub struct AppState {
     pub db: Arc<Mutex<Database>>,
 }

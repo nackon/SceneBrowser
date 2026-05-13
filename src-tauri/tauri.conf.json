@@ -28,7 +28,11 @@
             "dialog:allow-save"
           ]
         }
-      ]
+      ],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {

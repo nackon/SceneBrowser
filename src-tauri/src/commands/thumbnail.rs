@@ -1,5 +1,6 @@
 use crate::commands::folder::AppState;
 use crate::services::ThumbnailGenerator;
+use std::fs;
 use std::path::Path;
 use tauri::State;
 
@@ -15,7 +16,7 @@ pub async fn generate_thumbnail(
     let video = db
         .get_video_by_id(video_id)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to get video info: {}", e))?;
 
     drop(db); // Release lock before long operation
 
@@ -26,13 +27,29 @@ pub async fn generate_thumbnail(
         video.thumbnail_count as usize,
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| format!("Failed to generate thumbnail: {}", e))?;
 
-    // Update database with thumbnail path
-    let db = state.db.lock().await;
-    db.update_video_thumbnail(video_id, thumbnail_path.to_str().unwrap())
-        .await
-        .map_err(|e| e.to_string())?;
+    let thumbnail_path_str = thumbnail_path.to_string_lossy().to_string();
 
-    Ok(thumbnail_path.to_string_lossy().to_string())
+    // Update database with thumbnail path in a separate task to avoid blocking
+    let state_clone = state.inner().clone();
+    let thumbnail_path_clone = thumbnail_path_str.clone();
+    tokio::spawn(async move {
+        let db = state_clone.db.lock().await;
+        let _ = db
+            .update_video_thumbnail(video_id, &thumbnail_path_clone)
+            .await;
+    });
+
+    Ok(thumbnail_path_str)
+}
+
+/// Read thumbnail file and return as base64 data URL
+#[tauri::command]
+pub async fn read_thumbnail(thumbnail_path: String) -> Result<String, String> {
+    let bytes =
+        fs::read(&thumbnail_path).map_err(|e| format!("Failed to read thumbnail file: {}", e))?;
+
+    let base64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes);
+    Ok(format!("data:image/jpeg;base64,{}", base64))
 }

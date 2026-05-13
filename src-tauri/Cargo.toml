@@ -21,7 +21,7 @@ tauri-build = { version = "2", features = [] }
 tempfile = "3"
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
@@ -34,4 +34,5 @@ hex = "0.4"
 thiserror = "1.0"
 dirs = "5.0"
 which = "6.0"
+base64 = "0.22"
 
