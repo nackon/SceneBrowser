@@ -119,7 +119,11 @@ mod tests {
         let video_path = Path::new("/test/video.mp4");
         let thumbnail_path = ThumbnailGenerator::get_cached_thumbnail_path(video_path);
 
-        assert!(thumbnail_path.ends_with(".jpg"));
+        assert!(thumbnail_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e == "jpg")
+            .unwrap_or(false));
         assert!(thumbnail_path.to_str().unwrap().contains("thumbnails"));
     }
 
