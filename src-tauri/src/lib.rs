@@ -1,3 +1,4 @@
+mod commands;
 mod error;
 mod models;
 mod services;
@@ -14,9 +15,37 @@ pub use utils::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use commands::folder::AppState;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![])
+        .setup(|app| {
+            // Initialize database
+            let db_path = get_database_path();
+            let db = tauri::async_runtime::block_on(async {
+                Database::new(db_path).await
+            })
+            .expect("Failed to initialize database");
+
+            // Create app state
+            app.manage(AppState {
+                db: Arc::new(Mutex::new(db)),
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::folder::add_folder,
+            commands::folder::get_folders,
+            commands::folder::remove_folder,
+            commands::video::scan_folder,
+            commands::video::get_videos,
+            commands::video::search_videos,
+            commands::video::get_video_by_id,
+            commands::thumbnail::generate_thumbnail,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
