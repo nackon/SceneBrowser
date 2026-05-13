@@ -115,3 +115,36 @@ jobs:
             echo "App bundle not found!"
             exit 1
           fi
+
+      - name: Create DMG from app bundle
+        run: |
+          # Install create-dmg
+          brew install create-dmg
+
+          # Create DMG with proper settings
+          cd src-tauri/target/debug/bundle/macos
+          create-dmg \
+            --volname "SceneBrowser" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "SceneBrowser.app" 200 190 \
+            --hide-extension "SceneBrowser.app" \
+            --app-drop-link 600 185 \
+            "SceneBrowser-dev.dmg" \
+            "SceneBrowser.app" || true
+
+          # Fallback: simple DMG creation if create-dmg fails
+          if [ ! -f "SceneBrowser-dev.dmg" ]; then
+            echo "Creating simple DMG..."
+            hdiutil create -volname "SceneBrowser" -srcfolder "SceneBrowser.app" -ov -format UDZO "SceneBrowser-dev.dmg"
+          fi
+
+          ls -lh SceneBrowser-dev.dmg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenebrowser-macos-dev-${{ github.sha }}
+          path: src-tauri/target/debug/bundle/macos/SceneBrowser-dev.dmg
+          retention-days: 30

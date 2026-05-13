@@ -5,6 +5,22 @@
 
 A macOS video collection management application with multiple thumbnail preview.
 
+## Download
+
+### Stable Release
+Download the latest stable version from [GitHub Releases](https://github.com/nackon/SceneBrowser/releases/latest).
+
+### Development Builds
+Development builds are automatically created for every PR and push to main. These include the latest features but may be unstable.
+
+To download a development build:
+1. Go to [Actions](https://github.com/nackon/SceneBrowser/actions/workflows/ci.yml)
+2. Click on a successful workflow run
+3. Download the `scenebrowser-macos-dev-*` artifact from the "Artifacts" section
+4. Unzip and install the DMG file
+
+**Note:** Development builds are retained for 30 days.
+
 ## Quick Start
 
 ### Prerequisites
