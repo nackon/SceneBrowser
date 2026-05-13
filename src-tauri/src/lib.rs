@@ -17,6 +17,7 @@ pub use utils::{
 pub fn run() {
     use commands::folder::AppState;
     use std::sync::Arc;
+    use tauri::Manager;
     use tokio::sync::Mutex;
 
     tauri::Builder::default()

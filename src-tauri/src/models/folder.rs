@@ -12,6 +12,7 @@ pub struct Folder {
 }
 
 /// Input struct for inserting a new folder
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FolderInsert {
     pub path: String,

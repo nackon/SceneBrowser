@@ -53,7 +53,7 @@ impl ThumbnailGenerator {
 
         // Generate thumbnail grid with ffmpeg
         let output = Command::new(&ffmpeg_path)
-            .args(&[
+            .args([
                 "-i",
                 video_path_str,
                 "-vf",

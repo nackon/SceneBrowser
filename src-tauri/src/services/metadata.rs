@@ -50,7 +50,7 @@ impl MetadataExtractor {
 
         // Run ffprobe
         let output = Command::new(&ffprobe_path)
-            .args(&[
+            .args([
                 "-v",
                 "quiet",
                 "-print_format",
