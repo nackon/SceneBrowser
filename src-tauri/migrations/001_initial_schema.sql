@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS videos (
     codec TEXT,                        -- 動画コーデック
     framerate REAL,                    -- フレームレート
     thumbnail_path TEXT,               -- サムネイル画像パス
-    thumbnail_count INTEGER DEFAULT 16, -- サムネイル枚数
+    thumbnail_count INTEGER DEFAULT 9, -- サムネイル枚数
     rating INTEGER DEFAULT 0,          -- 0-5段階評価（Phase 2）
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
