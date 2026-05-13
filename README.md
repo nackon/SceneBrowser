@@ -2,25 +2,17 @@
 
 A macOS video collection management application with multiple thumbnail preview.
 
-## Prerequisites
+## Quick Start
 
-### 1. Rust
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
+### Prerequisites
 
-### 2. FFmpeg & FFprobe
-```bash
-# macOS
-brew install ffmpeg
+1. **Rust** - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+2. **FFmpeg** - `brew install ffmpeg`
+3. **Node.js 18+**
 
-# Or download from https://evermeet.cx/ffmpeg/
-```
+📖 **詳細なセットアップ手順は [SETUP.md](doc/SETUP.md) を参照してください**
 
-### 3. Node.js
-Node.js 18+ required for frontend development.
-
-## Development
+### Development
 
 ```bash
 # Install dependencies
@@ -30,12 +22,14 @@ npm install
 npm run tauri dev
 ```
 
-## Build
+### Build
 
 ```bash
 # Build for production
 npm run tauri build
 ```
+
+Output: `src-tauri/target/release/bundle/dmg/SceneBrowser_*.dmg`
 
 ## Project Structure
 
