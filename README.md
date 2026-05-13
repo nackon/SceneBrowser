@@ -27,7 +27,7 @@ To download a development build:
 
 1. **Rust** - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 2. **FFmpeg** - `brew install ffmpeg`
-3. **Node.js 18+**
+3. **Node.js 22+**
 
 📖 **詳細なセットアップ手順は [SETUP.md](doc/SETUP.md) を参照してください**
 

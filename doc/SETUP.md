@@ -20,7 +20,7 @@
 
 ### 必要なツール
 - Rust 1.75+
-- Node.js 18+
+- Node.js 22+
 - FFmpeg 6.0+
 - Xcode Command Line Tools
 
@@ -64,7 +64,7 @@ cargo --version
 #### Option A: Homebrew を使用
 
 ```bash
-brew install node@20
+brew install node@22
 ```
 
 #### Option B: nvm を使用（推奨）
@@ -74,14 +74,14 @@ brew install node@20
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 
 # シェルを再起動後
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 ```
 
 バージョン確認：
 
 ```bash
-node --version  # v20.x.x 以上
+node --version  # v22.x.x 以上
 npm --version   # 10.x.x 以上
 ```
 
