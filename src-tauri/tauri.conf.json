@@ -25,7 +25,16 @@
           "permissions": [
             "core:default",
             "dialog:allow-open",
-            "dialog:allow-save"
+            "dialog:allow-save",
+            "dialog:allow-message",
+            {
+              "identifier": "opener:allow-open-path",
+              "allow": [
+                {
+                  "path": "**"
+                }
+              ]
+            }
           ]
         }
       ],

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { generateThumbnail, readThumbnail } from '../services/commands';
 import type { Video } from '../types/video';
 import './VideoCard.css';
@@ -72,8 +73,20 @@ export function VideoCard({ video }: VideoCardProps) {
     return `${mb.toFixed(2)} MB`;
   };
 
+  const handleClick = async () => {
+    console.log('Video card clicked, path:', video.path);
+    try {
+      console.log('Opening video...');
+      await invoke('plugin:opener|open_path', { path: video.path });
+      console.log('Video opened successfully');
+    } catch (err) {
+      console.error('Failed to open video:', err);
+      alert(`Failed to open video: ${err}`);
+    }
+  };
+
   return (
-    <div className="video-card">
+    <div className="video-card" onClick={handleClick}>
       <div className="thumbnail-container">
         {loading ? (
           <div className="thumbnail-loading">
