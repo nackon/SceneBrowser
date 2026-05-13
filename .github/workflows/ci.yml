@@ -116,6 +116,14 @@ jobs:
             exit 1
           fi
 
+      - name: Ad-hoc sign the app bundle
+        run: |
+          # Ad-hoc signing for development builds
+          codesign --force --deep --sign - src-tauri/target/debug/bundle/macos/SceneBrowser.app
+
+          # Verify signature
+          codesign -dv --verbose=4 src-tauri/target/debug/bundle/macos/SceneBrowser.app
+
       - name: Create DMG from app bundle
         run: |
           # Install create-dmg

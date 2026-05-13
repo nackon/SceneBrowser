@@ -13,11 +13,18 @@ Download the latest stable version from [GitHub Releases](https://github.com/nac
 ### Development Builds
 Development builds are automatically created for every PR and push to main. These include the latest features but may be unstable.
 
-To download a development build:
+To download and install a development build:
 1. Go to [Actions](https://github.com/nackon/SceneBrowser/actions/workflows/ci.yml)
 2. Click on a successful workflow run
 3. Download the `scenebrowser-macos-dev-*` artifact from the "Artifacts" section
-4. Unzip and install the DMG file
+4. Unzip the artifact to get the DMG file
+5. Open the DMG file and drag SceneBrowser to Applications
+
+**Important:** Development builds are ad-hoc signed. On first launch:
+- macOS may show "SceneBrowser is damaged" error
+- To fix: Right-click the app → Open → Click "Open" in the dialog
+- Or use Terminal: `xattr -cr /Applications/SceneBrowser.app`
+- See [Installation Guide](doc/INSTALLATION.md) for detailed instructions
 
 **Note:** Development builds are retained for 30 days.
 
