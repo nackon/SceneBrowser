@@ -83,7 +83,11 @@ pub async fn scan_folder(
         let size = match std::fs::metadata(video_path) {
             Ok(m) => m.len() as i64,
             Err(e) => {
-                errors.push(format!("{}: Failed to get size - {}", video_path.display(), e));
+                errors.push(format!(
+                    "{}: Failed to get size - {}",
+                    video_path.display(),
+                    e
+                ));
                 continue;
             }
         };
@@ -113,7 +117,11 @@ pub async fn scan_folder(
             Ok(Some(video_id)) => {
                 // Update existing video
                 if let Err(e) = db.update_video(video_id, &video_insert).await {
-                    errors.push(format!("{}: Failed to update - {}", video_path.display(), e));
+                    errors.push(format!(
+                        "{}: Failed to update - {}",
+                        video_path.display(),
+                        e
+                    ));
                 } else {
                     updated += 1;
                 }
@@ -157,7 +165,10 @@ pub async fn get_videos(
 
 /// Search videos by filename or path
 #[tauri::command]
-pub async fn search_videos(query: String, state: State<'_, AppState>) -> Result<Vec<Video>, String> {
+pub async fn search_videos(
+    query: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<Video>, String> {
     let db = state.db.lock().await;
     db.search_videos(&query).await.map_err(|e| e.to_string())
 }

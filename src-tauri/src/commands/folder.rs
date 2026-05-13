@@ -33,7 +33,5 @@ pub async fn get_folders(state: State<'_, AppState>) -> Result<Vec<Folder>, Stri
 #[tauri::command]
 pub async fn remove_folder(folder_id: i64, state: State<'_, AppState>) -> Result<(), String> {
     let db = state.db.lock().await;
-    db.remove_folder(folder_id)
-        .await
-        .map_err(|e| e.to_string())
+    db.remove_folder(folder_id).await.map_err(|e| e.to_string())
 }

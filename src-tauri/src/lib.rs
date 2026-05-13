@@ -24,10 +24,8 @@ pub fn run() {
         .setup(|app| {
             // Initialize database
             let db_path = get_database_path();
-            let db = tauri::async_runtime::block_on(async {
-                Database::new(db_path).await
-            })
-            .expect("Failed to initialize database");
+            let db = tauri::async_runtime::block_on(async { Database::new(db_path).await })
+                .expect("Failed to initialize database");
 
             // Create app state
             app.manage(AppState {

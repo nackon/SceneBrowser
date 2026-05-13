@@ -49,25 +49,21 @@ impl Database {
     /// Add a new folder
     pub async fn add_folder(&self, path: &str, recursive: bool) -> Result<i64> {
         // Check if folder already exists
-        let existing: Option<(i64,)> = sqlx::query_as(
-            "SELECT id FROM folders WHERE path = ?"
-        )
-        .bind(path)
-        .fetch_optional(&self.pool)
-        .await?;
+        let existing: Option<(i64,)> = sqlx::query_as("SELECT id FROM folders WHERE path = ?")
+            .bind(path)
+            .fetch_optional(&self.pool)
+            .await?;
 
         if existing.is_some() {
             return Err(AppError::FolderAlreadyExists(path.to_string()));
         }
 
         // Insert new folder
-        let result = sqlx::query(
-            "INSERT INTO folders (path, recursive) VALUES (?, ?)"
-        )
-        .bind(path)
-        .bind(recursive)
-        .execute(&self.pool)
-        .await?;
+        let result = sqlx::query("INSERT INTO folders (path, recursive) VALUES (?, ?)")
+            .bind(path)
+            .bind(recursive)
+            .execute(&self.pool)
+            .await?;
 
         Ok(result.last_insert_rowid())
     }
