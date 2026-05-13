@@ -6,7 +6,10 @@ mod utils;
 
 pub use error::{AppError, Result};
 pub use models::{Folder, Video, VideoInsert};
-pub use services::{Database, MetadataExtractor, ThumbnailGenerator, VideoMetadata, VideoScanner};
+pub use services::{
+    DatabaseManager, FolderDatabase, GlobalDatabase, MetadataExtractor, ThumbnailGenerator,
+    VideoMetadata, VideoScanner,
+};
 pub use utils::{
     check_ffmpeg_availability, compute_file_hash, compute_string_hash, find_ffmpeg, find_ffprobe,
     get_app_data_dir, get_database_path, get_ffmpeg_version, get_ffprobe_version,
@@ -24,14 +27,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Initialize database
-            let db_path = get_database_path();
-            let db = tauri::async_runtime::block_on(async { Database::new(db_path).await })
-                .expect("Failed to initialize database");
+            // Initialize database manager
+            let db_manager = tauri::async_runtime::block_on(async { DatabaseManager::new().await })
+                .expect("Failed to initialize database manager");
 
             // Create app state
             app.manage(AppState {
-                db: Arc::new(Mutex::new(db)),
+                db_manager: Arc::new(Mutex::new(db_manager)),
             });
 
             Ok(())

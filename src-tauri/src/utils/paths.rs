@@ -6,7 +6,6 @@ pub fn get_scenebrowser_dir(folder_path: &Path) -> PathBuf {
 }
 
 /// Get the database file path for a folder
-#[allow(dead_code)]
 pub fn get_database_path_for_folder(folder_path: &Path) -> PathBuf {
     get_scenebrowser_dir(folder_path).join("db.sqlite")
 }

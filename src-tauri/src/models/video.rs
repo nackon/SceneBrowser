@@ -26,7 +26,6 @@ pub struct Video {
 /// Input struct for inserting a new video
 #[derive(Debug, Clone)]
 pub struct VideoInsert {
-    pub folder_id: i64,
     pub path: String,
     pub filename: String,
     pub hash: String,

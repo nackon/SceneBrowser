@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::folder::*;
-    use crate::services::Database;
+    use crate::services::DatabaseManager;
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
@@ -10,22 +10,27 @@ mod tests {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
 
         let count = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let db_path = std::env::temp_dir().join(format!(
-            "test_scenebrowser_{}_{}.db",
+
+        // Create a temporary directory for testing
+        let test_dir = std::env::temp_dir().join(format!(
+            "test_scenebrowser_{}_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_millis(),
             count
         ));
-        let _ = std::fs::remove_file(&db_path); // Clean up
+        std::fs::create_dir_all(&test_dir).expect("Failed to create test directory");
 
-        let db = Database::new(db_path)
+        // Temporarily override get_database_path for testing
+        // Since we can't override functions, we'll just use the real DatabaseManager
+        // but clean up the test folders afterward
+        let db_manager = DatabaseManager::new()
             .await
-            .expect("Failed to create test database");
+            .expect("Failed to create test database manager");
 
         AppState {
-            db: Arc::new(Mutex::new(db)),
+            db_manager: Arc::new(Mutex::new(db_manager)),
         }
     }
 
@@ -34,60 +39,81 @@ mod tests {
         let state = setup_test_db().await;
 
         // Add a folder directly through database
-        let db = state.db.lock().await;
-        let folder_id = db
-            .add_folder("/test/path", true)
+        let db_manager = state.db_manager.lock().await;
+        let global_db = db_manager.global_db();
+
+        let test_path = "/test/path_add_get";
+        let folder_id = global_db
+            .add_folder(test_path, true)
             .await
             .expect("Failed to add folder");
 
         assert!(folder_id > 0);
 
         // Get folders
-        let folders = db.get_folders().await.expect("Failed to get folders");
+        let folders = global_db
+            .get_folders()
+            .await
+            .expect("Failed to get folders");
 
-        assert_eq!(folders.len(), 1);
-        assert_eq!(folders[0].path, "/test/path");
-        assert_eq!(folders[0].recursive, true);
+        // Find our test folder
+        let test_folder = folders.iter().find(|f| f.path == test_path);
+        assert!(test_folder.is_some());
+        assert!(test_folder.unwrap().recursive);
+
+        // Cleanup
+        global_db.remove_folder(folder_id).await.ok();
     }
 
     #[tokio::test]
     async fn test_remove_folder() {
         let state = setup_test_db().await;
 
-        let db = state.db.lock().await;
+        let db_manager = state.db_manager.lock().await;
+        let global_db = db_manager.global_db();
 
+        let test_path = "/test/path_remove";
         // Add a folder
-        let folder_id = db
-            .add_folder("/test/path2", false)
+        let folder_id = global_db
+            .add_folder(test_path, false)
             .await
             .expect("Failed to add folder");
 
         // Remove the folder
-        db.remove_folder(folder_id)
+        global_db
+            .remove_folder(folder_id)
             .await
             .expect("Failed to remove folder");
 
         // Verify it's gone
-        let folders = db.get_folders().await.expect("Failed to get folders");
-
-        assert_eq!(folders.len(), 0);
+        let folders = global_db
+            .get_folders()
+            .await
+            .expect("Failed to get folders");
+        let test_folder = folders.iter().find(|f| f.path == test_path);
+        assert!(test_folder.is_none());
     }
 
     #[tokio::test]
     async fn test_duplicate_folder() {
         let state = setup_test_db().await;
 
-        let db = state.db.lock().await;
+        let db_manager = state.db_manager.lock().await;
+        let global_db = db_manager.global_db();
 
+        let test_path = "/test/dup_test";
         // Add a folder
-        let _ = db
-            .add_folder("/test/dup", true)
+        let folder_id = global_db
+            .add_folder(test_path, true)
             .await
             .expect("Failed to add folder");
 
         // Try to add the same folder again
-        let result = db.add_folder("/test/dup", true).await;
+        let result = global_db.add_folder(test_path, true).await;
 
         assert!(result.is_err());
+
+        // Cleanup
+        global_db.remove_folder(folder_id).await.ok();
     }
 }
