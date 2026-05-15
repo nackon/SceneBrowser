@@ -58,8 +58,36 @@ export async function getVideoById(videoId: number): Promise<Video> {
 
 // --- Thumbnail Commands ---
 
+export interface ThumbnailProgress {
+  current: number;
+  total: number;
+  current_file: string;
+}
+
 export async function generateThumbnail(videoId: number): Promise<string> {
   return await invoke<string>('generate_thumbnail', { videoId });
+}
+
+export async function generateThumbnailsBatch(
+  folderId: number,
+  onProgress?: (progress: ThumbnailProgress) => void
+): Promise<number> {
+  let unlisten: UnlistenFn | null = null;
+
+  if (onProgress) {
+    unlisten = await listen<ThumbnailProgress>('thumbnail_progress', (event) => {
+      onProgress(event.payload);
+    });
+  }
+
+  try {
+    const result = await invoke<number>('generate_thumbnails_batch', { folderId });
+    return result;
+  } finally {
+    if (unlisten) {
+      unlisten();
+    }
+  }
 }
 
 export async function readThumbnail(thumbnailPath: string): Promise<string> {

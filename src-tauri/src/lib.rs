@@ -47,6 +47,7 @@ pub fn run() {
             commands::video::search_videos,
             commands::video::get_video_by_id,
             commands::thumbnail::generate_thumbnail,
+            commands::thumbnail::generate_thumbnails_batch,
             commands::thumbnail::read_thumbnail,
             commands::system::check_ffmpeg,
         ])
