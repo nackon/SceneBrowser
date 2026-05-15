@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
-import { getFolders, addFolder, scanFolder, generateThumbnailsBatch, getVideos } from '../services/commands';
+import { open, confirm } from '@tauri-apps/plugin-dialog';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { getFolders, addFolder, scanFolder, removeFolder, generateThumbnailsBatch, getVideos } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
 import type { Folder } from '../types/video';
 import './FolderList.css';
+
+interface DeleteProgress {
+  phase: string;
+  current: number;
+  total: number;
+}
 
 export function FolderList() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [scanning, setScanning] = useState(false);
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState<{ current: number; total: number } | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
   const { selectedFolder, setSelectedFolder, setScanProgress, setVideos, setIsLoading } = useVideoStore();
 
   useEffect(() => {
@@ -97,6 +106,46 @@ export function FolderList() {
     }
   }
 
+  async function handleRemoveFolder(folderId: number, folderPath: string) {
+    const confirmed = await confirm(
+      `Are you sure you want to remove this folder?\n\n${folderPath}\n\nThis will delete all thumbnails and database entries.`,
+      { title: 'Remove Folder', kind: 'warning' }
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleting(folderId);
+    setDeleteProgress(null);
+
+    let unlisten: UnlistenFn | null = null;
+
+    try {
+      unlisten = await listen<DeleteProgress>('delete_progress', (event) => {
+        setDeleteProgress(event.payload);
+      });
+
+      await removeFolder(folderId);
+
+      // Clear selection if deleting the selected folder
+      if (selectedFolder === folderId) {
+        setSelectedFolder(null);
+        setVideos([]);
+      }
+
+      await loadFolders();
+    } catch (error) {
+      console.error('Failed to remove folder:', error);
+    } finally {
+      if (unlisten) {
+        unlisten();
+      }
+      setDeleting(null);
+      setDeleteProgress(null);
+    }
+  }
+
   return (
     <div className="folder-list">
       <div className="folder-list-header">
@@ -132,7 +181,7 @@ export function FolderList() {
               <div className="folder-actions">
                 <button
                   onClick={() => handleScanFolder(folder.id)}
-                  disabled={scanning}
+                  disabled={scanning || deleting !== null}
                   className="btn-scan"
                   title="Scan folder"
                 >
@@ -140,27 +189,63 @@ export function FolderList() {
                 </button>
                 <button
                   onClick={() => handleGenerateThumbnails(folder.id)}
-                  disabled={generatingThumbnails}
+                  disabled={generatingThumbnails || deleting !== null}
                   className="btn-thumbnail"
                   title="Generate thumbnails"
                 >
                   🖼️
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveFolder(folder.id, folder.path);
+                  }}
+                  disabled={scanning || deleting !== null}
+                  className="btn-delete"
+                  title="Remove folder"
+                >
+                  🗑️
+                </button>
               </div>
+              {deleting === folder.id && deleteProgress && (
+                <div className="delete-progress">
+                  <div className="delete-progress-text">
+                    {deleteProgress.phase}
+                    {deleteProgress.total > 0 && (
+                      <span className="delete-progress-count">
+                        {' '}
+                        ({deleteProgress.current}/{deleteProgress.total})
+                      </span>
+                    )}
+                  </div>
+                  {deleteProgress.total > 0 && (
+                    <div className="delete-progress-bar">
+                      <div
+                        className="delete-progress-fill"
+                        style={{
+                          width: `${(deleteProgress.current / deleteProgress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
       )}
-      {thumbnailProgress && (
+
+      {generatingThumbnails && thumbnailProgress && (
         <div className="thumbnail-progress">
           <div className="progress-text">
-            Generating thumbnails... {thumbnailProgress.current}/{thumbnailProgress.total} (
-            {Math.round((thumbnailProgress.current / thumbnailProgress.total) * 100)}%)
+            Generating thumbnails... {thumbnailProgress.current}/{thumbnailProgress.total}
           </div>
           <div className="progress-bar">
             <div
               className="progress-fill"
-              style={{ width: `${(thumbnailProgress.current / thumbnailProgress.total) * 100}%` }}
+              style={{
+                width: `${(thumbnailProgress.current / thumbnailProgress.total) * 100}%`,
+              }}
             />
           </div>
         </div>

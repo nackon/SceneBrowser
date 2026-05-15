@@ -54,11 +54,18 @@
 
 .folder-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border-color);
   gap: 8px;
   transition: background 0.2s;
+}
+
+.folder-item > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .folder-item:hover {
@@ -131,6 +138,54 @@
 .btn-thumbnail:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-delete {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: #dc2626;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-progress {
+  padding: 8px 0 0;
+  font-size: 12px;
+}
+
+.delete-progress-text {
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.delete-progress-count {
+  color: var(--text-tertiary);
+}
+
+.delete-progress-bar {
+  height: 4px;
+  background: var(--bg-secondary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.delete-progress-fill {
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.2s;
 }
 
 .thumbnail-progress {
