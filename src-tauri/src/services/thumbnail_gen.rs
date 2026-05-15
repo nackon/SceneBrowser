@@ -2,8 +2,10 @@ use crate::error::{AppError, Result};
 use crate::utils::ffmpeg::find_ffmpeg;
 use crate::utils::hashing::compute_string_hash;
 use crate::utils::paths::get_thumbnail_cache_dir_for_folder;
+use shared_child::SharedChild;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 /// Thumbnail Generator service using ffmpeg
 pub struct ThumbnailGenerator;
@@ -65,28 +67,47 @@ impl ThumbnailGenerator {
         let video_path_string = video_path_str.to_string();
 
         let output = tokio::task::spawn_blocking(move || {
-            Command::new(&ffmpeg_path_clone)
-                .args([
-                    "-threads",
-                    "2", // Use 2 threads per process for faster encoding
-                    "-i",
-                    &video_path_string,
-                    "-vf",
-                    &vf_string,
-                    "-frames:v",
-                    "1",
-                    "-q:v",
-                    "3",        // JPEG quality (2-5 is good, lower = better quality)
-                    "-y",       // Overwrite output file
-                    "-nostats", // Disable progress stats
-                    "-loglevel",
-                    "error", // Only show errors
-                    output_path_clone
-                        .to_str()
-                        .ok_or_else(|| AppError::InvalidPath("Invalid output path".to_string()))?,
-                ])
-                .output()
-                .map_err(|e| AppError::FFmpegExecution(format!("Failed to run ffmpeg: {}", e)))
+            let mut command = Command::new(&ffmpeg_path_clone);
+            command.args([
+                "-threads",
+                "2", // Use 2 threads per process for faster encoding
+                "-i",
+                &video_path_string,
+                "-vf",
+                &vf_string,
+                "-frames:v",
+                "1",
+                "-q:v",
+                "3",        // JPEG quality (2-5 is good, lower = better quality)
+                "-y",       // Overwrite output file
+                "-nostats", // Disable progress stats
+                "-loglevel",
+                "error", // Only show errors
+                output_path_clone
+                    .to_str()
+                    .ok_or_else(|| AppError::InvalidPath("Invalid output path".to_string()))?,
+            ]);
+
+            let child = SharedChild::spawn(&mut command)
+                .map_err(|e| AppError::FFmpegExecution(format!("Failed to spawn ffmpeg: {}", e)))?;
+
+            let shared_child = Arc::new(child);
+
+            // Wait for the child process to complete
+            // SharedChild ensures the process is killed if dropped
+            let status = shared_child.wait().map_err(|e| {
+                AppError::FFmpegExecution(format!("Failed to wait for ffmpeg: {}", e))
+            })?;
+
+            // Read stdout and stderr (will be empty due to our ffmpeg args)
+            let stdout = Vec::new();
+            let stderr = Vec::new();
+
+            Ok::<std::process::Output, AppError>(std::process::Output {
+                status,
+                stdout,
+                stderr,
+            })
         })
         .await
         .map_err(|e| AppError::FFmpegExecution(format!("Failed to spawn ffmpeg task: {}", e)))??;
