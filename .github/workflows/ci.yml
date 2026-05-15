@@ -58,6 +58,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Create dummy dist directory
+        run: mkdir -p dist
+
       - name: Check Rust formatting
         run: cd src-tauri && cargo fmt --all -- --check
 
