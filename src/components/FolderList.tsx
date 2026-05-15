@@ -71,6 +71,11 @@ export function FolderList() {
       setVideos(videos);
       setSelectedFolder(folderId);
       setIsLoading(false);
+
+      // Automatically generate thumbnails after scan completes
+      if (result.videos_added > 0 || result.videos_updated > 0) {
+        await handleGenerateThumbnails(folderId);
+      }
     } catch (error) {
       console.error('Failed to scan folder:', error);
       setIsLoading(false);
