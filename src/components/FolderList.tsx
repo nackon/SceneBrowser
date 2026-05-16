@@ -65,12 +65,8 @@ export function FolderList() {
       console.log('Scan complete:', result);
       setScanProgress(null);
 
-      // Refresh video list by manually fetching
-      setIsLoading(true);
-      const videos = await getVideos(folderId, 100, 0);
-      setVideos(videos);
+      // Select folder first (this will trigger useVideos hook to fetch videos)
       setSelectedFolder(folderId);
-      setIsLoading(false);
 
       // Automatically generate thumbnails after scan completes
       if (result.videos_added > 0 || result.videos_updated > 0) {

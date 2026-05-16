@@ -4,8 +4,8 @@ import { VideoCard } from './VideoCard';
 import type { Video } from '../types/video';
 import './VideoGrid.css';
 
-const CARD_WIDTH = 360;
-const CARD_HEIGHT = 280;
+const CARD_WIDTH = 400;
+const CARD_HEIGHT = 320;
 const GUTTER = 16;
 
 interface VideoGridProps {
