@@ -163,16 +163,9 @@ jobs:
             exit 1
           fi
 
-      - name: Test release app (direct execution)
-        run: |
-          echo "=== Test 1: Direct execution (terminal with full PATH) ==="
-          # Run the app directly from terminal - this should work
-          src-tauri/target/release/bundle/macos/SceneBrowser.app/Contents/MacOS/SceneBrowser --version 2>&1 || true
-
       - name: Test release app (Finder-like execution)
         run: |
-          echo ""
-          echo "=== Test 2: Finder-like execution (using 'open' command) ==="
+          echo "=== Finder-like execution test (using 'open' command) ==="
           # The 'open' command mimics double-clicking from Finder
           # This simulates the real user experience where PATH is limited
 
@@ -181,15 +174,18 @@ jobs:
           open src-tauri/target/release/bundle/macos/SceneBrowser.app
 
           # Wait for app to start and log initialization
-          sleep 3
+          echo "Waiting for app to start..."
+          sleep 5
 
           # Close the app
+          echo "Closing app..."
           osascript -e 'quit app "SceneBrowser"' 2>/dev/null || true
           sleep 1
 
           # Check Console.app logs for our debug output
+          echo ""
           echo "Checking system logs for debug output..."
-          log show --predicate 'process == "SceneBrowser"' --style syslog --last 1m 2>/dev/null | grep -E "\[DEBUG\]|ffmpeg|SceneBrowser Starting" || echo "No debug logs found in system log"
+          log show --predicate 'process == "SceneBrowser"' --style syslog --last 2m 2>/dev/null | grep -E "\[DEBUG\]|ffmpeg|SceneBrowser Starting" || echo "No debug logs found in system log"
 
       - name: Check environment
         run: |
