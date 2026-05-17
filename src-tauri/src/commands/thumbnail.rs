@@ -155,6 +155,12 @@ pub async fn generate_thumbnails_batch(
         current_file: String,
     }
 
+    #[derive(Clone, Serialize, Deserialize)]
+    struct ThumbnailGenerated {
+        video_id: i64,
+        thumbnail_path: String,
+    }
+
     let db_manager = state.db_manager.lock().await;
 
     // Get folder info
@@ -226,13 +232,26 @@ pub async fn generate_thumbnails_batch(
                 .await;
 
                 if let Ok(thumbnail_path) = result {
+                    let thumbnail_path_str = thumbnail_path.to_string_lossy().to_string();
+
                     // Update database
                     let db_manager = state.db_manager.lock().await;
                     if let Ok(folder_db) = db_manager.get_folder_db(&folder_path).await {
                         let _ = folder_db
-                            .update_video_thumbnail(video.id, &thumbnail_path.to_string_lossy())
+                            .update_video_thumbnail(video.id, &thumbnail_path_str)
                             .await;
                     }
+                    drop(db_manager);
+
+                    // Emit event for individual thumbnail completion
+                    let _ = window.emit(
+                        "thumbnail_generated",
+                        ThumbnailGenerated {
+                            video_id: video.id,
+                            thumbnail_path: thumbnail_path_str,
+                        },
+                    );
+
                     generated.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
             }

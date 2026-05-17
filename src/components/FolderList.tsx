@@ -19,11 +19,27 @@ export function FolderList() {
   const [thumbnailProgress, setThumbnailProgress] = useState<{ current: number; total: number } | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
-  const { selectedFolder, setSelectedFolder, setScanProgress, setVideos, setIsLoading } = useVideoStore();
+  const { selectedFolder, setSelectedFolder, setScanProgress, setVideos, setIsLoading, updateVideoThumbnail } = useVideoStore();
 
   useEffect(() => {
     loadFolders();
-  }, []);
+
+    // Listen for individual thumbnail generation events
+    let unlistenThumbnailGenerated: UnlistenFn | null = null;
+
+    listen<{ video_id: number; thumbnail_path: string }>('thumbnail_generated', (event) => {
+      const { video_id, thumbnail_path } = event.payload;
+      updateVideoThumbnail(video_id, thumbnail_path);
+    }).then((unlisten) => {
+      unlistenThumbnailGenerated = unlisten;
+    });
+
+    return () => {
+      if (unlistenThumbnailGenerated) {
+        unlistenThumbnailGenerated();
+      }
+    };
+  }, [updateVideoThumbnail]);
 
   async function loadFolders() {
     try {
@@ -97,11 +113,7 @@ export function FolderList() {
       console.log(`Generated ${generated} thumbnails`);
       setThumbnailProgress(null);
 
-      // Refresh video list to show new thumbnails
-      if (selectedFolder === folderId) {
-        setVideos([]); // Force reload
-        setSelectedFolder(folderId);
-      }
+      // No need to reload - individual thumbnails are updated via events
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
     } finally {
