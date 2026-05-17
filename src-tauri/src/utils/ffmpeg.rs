@@ -26,17 +26,12 @@ pub fn find_ffmpeg() -> Result<FFmpegSource> {
 
     for path_str in &common_paths {
         let path = PathBuf::from(path_str);
-        if path.exists() {
-            return Ok(FFmpegSource::System(path));
+
+        // Try to canonicalize the path (resolves symlinks and checks existence)
+        if let Ok(canonical_path) = path.canonicalize() {
+            return Ok(FFmpegSource::System(canonical_path));
         }
     }
-
-    // TODO: Check sidecar location in production build
-    // if let Ok(sidecar_path) = tauri::api::process::sidecar_path("ffmpeg") {
-    //     if sidecar_path.exists() {
-    //         return Ok(FFmpegSource::Sidecar(sidecar_path));
-    //     }
-    // }
 
     Err(AppError::FFmpegNotFound)
 }
@@ -58,17 +53,12 @@ pub fn find_ffprobe() -> Result<FFmpegSource> {
 
     for path_str in &common_paths {
         let path = PathBuf::from(path_str);
-        if path.exists() {
-            return Ok(FFmpegSource::System(path));
+
+        // Try to canonicalize the path (resolves symlinks and checks existence)
+        if let Ok(canonical_path) = path.canonicalize() {
+            return Ok(FFmpegSource::System(canonical_path));
         }
     }
-
-    // TODO: Check sidecar location in production build
-    // if let Ok(sidecar_path) = tauri::api::process::sidecar_path("ffprobe") {
-    //     if sidecar_path.exists() {
-    //         return Ok(FFmpegSource::Sidecar(sidecar_path));
-    //     }
-    // }
 
     Err(AppError::FFmpegNotFound)
 }
