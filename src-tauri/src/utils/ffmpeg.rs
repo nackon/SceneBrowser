@@ -11,9 +11,22 @@ pub enum FFmpegSource {
 
 /// Find ffmpeg binary (sidecar or system)
 pub fn find_ffmpeg() -> Result<FFmpegSource> {
+    // Debug: Log current PATH
+    if let Ok(path_env) = std::env::var("PATH") {
+        eprintln!("[DEBUG] PATH environment variable: {}", path_env);
+    } else {
+        eprintln!("[DEBUG] PATH environment variable not set");
+    }
+
     // Try system PATH first (works in development and when PATH is properly set)
-    if let Ok(path) = which::which("ffmpeg") {
-        return Ok(FFmpegSource::System(path));
+    match which::which("ffmpeg") {
+        Ok(path) => {
+            eprintln!("[DEBUG] Found ffmpeg in PATH: {:?}", path);
+            return Ok(FFmpegSource::System(path));
+        }
+        Err(e) => {
+            eprintln!("[DEBUG] ffmpeg not found in PATH: {}", e);
+        }
     }
 
     // Check common installation paths (for macOS .app bundles where PATH is limited)
@@ -24,23 +37,44 @@ pub fn find_ffmpeg() -> Result<FFmpegSource> {
         "/usr/bin/ffmpeg",          // System install
     ];
 
+    eprintln!("[DEBUG] Checking common installation paths:");
     for path_str in &common_paths {
         let path = PathBuf::from(path_str);
+        eprintln!("[DEBUG]   Trying: {}", path_str);
 
-        // Try to canonicalize the path (resolves symlinks and checks existence)
-        if let Ok(canonical_path) = path.canonicalize() {
-            return Ok(FFmpegSource::System(canonical_path));
+        // Check if file exists before canonicalizing
+        if path.exists() {
+            eprintln!("[DEBUG]     File exists");
+            // Try to canonicalize the path (resolves symlinks and checks existence)
+            match path.canonicalize() {
+                Ok(canonical_path) => {
+                    eprintln!("[DEBUG]     Canonicalized to: {:?}", canonical_path);
+                    return Ok(FFmpegSource::System(canonical_path));
+                }
+                Err(e) => {
+                    eprintln!("[DEBUG]     Failed to canonicalize: {}", e);
+                }
+            }
+        } else {
+            eprintln!("[DEBUG]     File does not exist");
         }
     }
 
+    eprintln!("[DEBUG] ffmpeg not found in any location");
     Err(AppError::FFmpegNotFound)
 }
 
 /// Find ffprobe binary (sidecar or system)
 pub fn find_ffprobe() -> Result<FFmpegSource> {
     // Try system PATH first (works in development and when PATH is properly set)
-    if let Ok(path) = which::which("ffprobe") {
-        return Ok(FFmpegSource::System(path));
+    match which::which("ffprobe") {
+        Ok(path) => {
+            eprintln!("[DEBUG] Found ffprobe in PATH: {:?}", path);
+            return Ok(FFmpegSource::System(path));
+        }
+        Err(e) => {
+            eprintln!("[DEBUG] ffprobe not found in PATH: {}", e);
+        }
     }
 
     // Check common installation paths (for macOS .app bundles where PATH is limited)
@@ -51,15 +85,30 @@ pub fn find_ffprobe() -> Result<FFmpegSource> {
         "/usr/bin/ffprobe",          // System install
     ];
 
+    eprintln!("[DEBUG] Checking common installation paths for ffprobe:");
     for path_str in &common_paths {
         let path = PathBuf::from(path_str);
+        eprintln!("[DEBUG]   Trying: {}", path_str);
 
-        // Try to canonicalize the path (resolves symlinks and checks existence)
-        if let Ok(canonical_path) = path.canonicalize() {
-            return Ok(FFmpegSource::System(canonical_path));
+        // Check if file exists before canonicalizing
+        if path.exists() {
+            eprintln!("[DEBUG]     File exists");
+            // Try to canonicalize the path (resolves symlinks and checks existence)
+            match path.canonicalize() {
+                Ok(canonical_path) => {
+                    eprintln!("[DEBUG]     Canonicalized to: {:?}", canonical_path);
+                    return Ok(FFmpegSource::System(canonical_path));
+                }
+                Err(e) => {
+                    eprintln!("[DEBUG]     Failed to canonicalize: {}", e);
+                }
+            }
+        } else {
+            eprintln!("[DEBUG]     File does not exist");
         }
     }
 
+    eprintln!("[DEBUG] ffprobe not found in any location");
     Err(AppError::FFmpegNotFound)
 }
 

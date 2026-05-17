@@ -136,7 +136,7 @@ jobs:
       - name: Build Tauri app (debug mode)
         run: npm run tauri build -- --debug
 
-      - name: Verify build artifacts
+      - name: Verify debug build artifacts
         run: |
           ls -la src-tauri/target/debug/bundle/macos/
           if [ ! -d "src-tauri/target/debug/bundle/macos/SceneBrowser.app" ]; then
@@ -144,10 +144,36 @@ jobs:
             exit 1
           fi
 
-      - name: Ad-hoc sign the app bundle
+      - name: Ad-hoc sign the debug app bundle
         run: |
           # Ad-hoc signing for development builds
           codesign --force --deep --sign - src-tauri/target/debug/bundle/macos/SceneBrowser.app
 
           # Verify signature
           codesign -dv --verbose=4 src-tauri/target/debug/bundle/macos/SceneBrowser.app
+
+      - name: Build Tauri app (release mode)
+        run: npm run tauri build
+
+      - name: Verify release build artifacts
+        run: |
+          ls -la src-tauri/target/release/bundle/macos/
+          if [ ! -d "src-tauri/target/release/bundle/macos/SceneBrowser.app" ]; then
+            echo "Release app bundle not found!"
+            exit 1
+          fi
+
+      - name: Test release app (check ffmpeg detection)
+        run: |
+          echo "Testing release build ffmpeg detection..."
+          # Run the app with a command that will trigger ffmpeg detection
+          # The debug logs will be visible in stderr
+          src-tauri/target/release/bundle/macos/SceneBrowser.app/Contents/MacOS/SceneBrowser --version 2>&1 || true
+
+          echo "Checking if ffmpeg/ffprobe are accessible..."
+          which ffmpeg || echo "ffmpeg not in PATH"
+          which ffprobe || echo "ffprobe not in PATH"
+
+          echo "Checking common paths..."
+          ls -la /opt/homebrew/bin/ffmpeg 2>/dev/null || echo "/opt/homebrew/bin/ffmpeg not found"
+          ls -la /usr/local/bin/ffmpeg 2>/dev/null || echo "/usr/local/bin/ffmpeg not found"
