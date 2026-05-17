@@ -68,6 +68,10 @@ export async function generateThumbnail(videoId: number): Promise<string> {
   return await invoke<string>('generate_thumbnail', { videoId });
 }
 
+export async function regenerateThumbnail(videoId: number): Promise<string> {
+  return await invoke<string>('regenerate_thumbnail', { videoId });
+}
+
 export async function generateThumbnailsBatch(
   folderId: number,
   onProgress?: (progress: ThumbnailProgress) => void

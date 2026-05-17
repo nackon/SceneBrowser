@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { readThumbnail } from '../services/commands';
+import { readThumbnail, regenerateThumbnail } from '../services/commands';
 import type { Video } from '../types/video';
 import './VideoCard.css';
 
 interface VideoCardProps {
   video: Video;
+  onThumbnailRegenerated?: () => void;
 }
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, onThumbnailRegenerated }: VideoCardProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (video.thumbnail_path) {
@@ -31,6 +33,25 @@ export function VideoCard({ video }: VideoCardProps) {
       setError(true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRegenerateThumbnail(e: React.MouseEvent) {
+    e.stopPropagation();
+    setRegenerating(true);
+    setError(false);
+    try {
+      const thumbnailPath = await regenerateThumbnail(video.id);
+      const dataUrl = await readThumbnail(thumbnailPath);
+      setThumbnailUrl(dataUrl);
+      if (onThumbnailRegenerated) {
+        onThumbnailRegenerated();
+      }
+    } catch (err) {
+      console.error('Failed to regenerate thumbnail:', err);
+      setError(true);
+    } finally {
+      setRegenerating(false);
     }
   }
 
@@ -88,7 +109,22 @@ export function VideoCard({ video }: VideoCardProps) {
         ) : (
           <div className="thumbnail-placeholder">🎬</div>
         )}
+        {regenerating && (
+          <div className="thumbnail-regenerating-overlay">
+            <div className="spinner-small"></div>
+            <p>Regenerating...</p>
+          </div>
+        )}
         <div className="duration-badge">{formatDuration(video.duration)}</div>
+        <button
+          className="regenerate-button"
+          onClick={handleRegenerateThumbnail}
+          disabled={regenerating}
+          title="Regenerate thumbnail"
+          aria-label="Regenerate thumbnail"
+        >
+          🔄
+        </button>
       </div>
       <div className="video-info">
         <h3 className="filename" title={video.filename}>

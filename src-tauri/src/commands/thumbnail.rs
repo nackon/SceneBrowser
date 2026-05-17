@@ -65,6 +65,69 @@ pub async fn generate_thumbnail(
     Ok(thumbnail_path_str)
 }
 
+/// Regenerate a thumbnail for a video (deletes existing and generates new)
+#[tauri::command]
+pub async fn regenerate_thumbnail(
+    video_id: i64,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let db_manager = state.db_manager.lock().await;
+
+    // Search for video in all folders
+    let global_db = db_manager.global_db();
+    let folders = global_db.get_folders().await.map_err(|e| e.to_string())?;
+
+    let mut video_opt = None;
+    let mut folder_path_opt = None;
+
+    for folder in folders {
+        let folder_path = PathBuf::from(&folder.path);
+        let folder_db = db_manager
+            .get_folder_db(&folder_path)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Ok(video) = folder_db.get_video_by_id(video_id).await {
+            video_opt = Some(video);
+            folder_path_opt = Some(folder_path);
+            break;
+        }
+    }
+
+    let video = video_opt.ok_or_else(|| format!("Video with ID {} not found", video_id))?;
+    let folder_path = folder_path_opt.unwrap();
+
+    drop(db_manager); // Release lock before long operation
+
+    // Delete existing thumbnail if it exists
+    let video_path = Path::new(&video.path);
+    let _ = ThumbnailGenerator::delete_thumbnail(video_path);
+
+    // Generate new thumbnail
+    let thumbnail_path = ThumbnailGenerator::generate(
+        video_path,
+        video.duration as f64,
+        video.thumbnail_count as usize,
+    )
+    .await
+    .map_err(|e| format!("Failed to generate thumbnail: {}", e))?;
+
+    let thumbnail_path_str = thumbnail_path.to_string_lossy().to_string();
+
+    // Update database with thumbnail path
+    let db_manager = state.db_manager.lock().await;
+    let folder_db = db_manager
+        .get_folder_db(&folder_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    folder_db
+        .update_video_thumbnail(video_id, &thumbnail_path_str)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(thumbnail_path_str)
+}
+
 /// Read thumbnail file and return as base64 data URL
 #[tauri::command]
 pub async fn read_thumbnail(thumbnail_path: String) -> Result<String, String> {
