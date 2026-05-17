@@ -185,11 +185,21 @@ pub async fn generate_thumbnails_batch(
     let videos_to_process: Vec<_> = videos
         .into_iter()
         .filter(|v| {
-            v.thumbnail_path.is_none()
+            // Process if no thumbnail path in DB
+            if v.thumbnail_path.is_none()
                 || v.thumbnail_path
                     .as_ref()
                     .map(|p| p.is_empty())
                     .unwrap_or(true)
+            {
+                return true;
+            }
+            // Process if thumbnail file doesn't exist
+            if let Some(path) = &v.thumbnail_path {
+                !Path::new(path).exists()
+            } else {
+                true
+            }
         })
         .collect();
 
