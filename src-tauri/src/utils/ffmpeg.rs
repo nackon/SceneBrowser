@@ -11,9 +11,24 @@ pub enum FFmpegSource {
 
 /// Find ffmpeg binary (sidecar or system)
 pub fn find_ffmpeg() -> Result<FFmpegSource> {
-    // Try system PATH first for development
+    // Try system PATH first (works in development and when PATH is properly set)
     if let Ok(path) = which::which("ffmpeg") {
         return Ok(FFmpegSource::System(path));
+    }
+
+    // Check common installation paths (for macOS .app bundles where PATH is limited)
+    let common_paths = [
+        "/opt/homebrew/bin/ffmpeg", // Apple Silicon Homebrew
+        "/usr/local/bin/ffmpeg",    // Intel Homebrew
+        "/opt/local/bin/ffmpeg",    // MacPorts
+        "/usr/bin/ffmpeg",          // System install
+    ];
+
+    for path_str in &common_paths {
+        let path = PathBuf::from(path_str);
+        if path.exists() {
+            return Ok(FFmpegSource::System(path));
+        }
     }
 
     // TODO: Check sidecar location in production build
@@ -28,9 +43,24 @@ pub fn find_ffmpeg() -> Result<FFmpegSource> {
 
 /// Find ffprobe binary (sidecar or system)
 pub fn find_ffprobe() -> Result<FFmpegSource> {
-    // Try system PATH first for development
+    // Try system PATH first (works in development and when PATH is properly set)
     if let Ok(path) = which::which("ffprobe") {
         return Ok(FFmpegSource::System(path));
+    }
+
+    // Check common installation paths (for macOS .app bundles where PATH is limited)
+    let common_paths = [
+        "/opt/homebrew/bin/ffprobe", // Apple Silicon Homebrew
+        "/usr/local/bin/ffprobe",    // Intel Homebrew
+        "/opt/local/bin/ffprobe",    // MacPorts
+        "/usr/bin/ffprobe",          // System install
+    ];
+
+    for path_str in &common_paths {
+        let path = PathBuf::from(path_str);
+        if path.exists() {
+            return Ok(FFmpegSource::System(path));
+        }
     }
 
     // TODO: Check sidecar location in production build
