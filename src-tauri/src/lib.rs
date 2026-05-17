@@ -27,6 +27,21 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // Debug: Log FFmpeg detection on startup
+            eprintln!("=== SceneBrowser Starting ===");
+            eprintln!("[DEBUG] Checking FFmpeg availability on startup...");
+            match check_ffmpeg_availability() {
+                Ok(_) => {
+                    eprintln!("[DEBUG] FFmpeg check successful");
+                    if let Ok(ffmpeg_version) = get_ffmpeg_version() {
+                        eprintln!("[DEBUG] FFmpeg version: {}", ffmpeg_version);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[DEBUG] FFmpeg check FAILED: {:?}", e);
+                }
+            }
+
             // Initialize database manager
             let db_manager = tauri::async_runtime::block_on(async { DatabaseManager::new().await })
                 .expect("Failed to initialize database manager");
