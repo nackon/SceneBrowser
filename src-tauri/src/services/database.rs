@@ -139,7 +139,7 @@ impl FolderDatabase {
             .await?;
 
         // Run migrations
-        Self::run_migrations(&pool).await?;
+        Self::run_migrations(&pool, folder_path).await?;
 
         Ok(Self {
             pool,
@@ -148,12 +148,35 @@ impl FolderDatabase {
     }
 
     /// Run database migrations
-    async fn run_migrations(pool: &SqlitePool) -> Result<()> {
+    async fn run_migrations(pool: &SqlitePool, folder_path: &Path) -> Result<()> {
         // Read per-folder migration file
         let migration_sql = include_str!("../../migrations/per_folder_schema.sql");
 
         // Execute migration
         sqlx::query(migration_sql).execute(pool).await?;
+
+        // Update existing videos with old default (16) to new default (9)
+        // Clear thumbnail_path to force regeneration with new grid size
+        let updated_rows = sqlx::query(
+            "UPDATE videos SET thumbnail_count = 9, thumbnail_path = NULL WHERE thumbnail_count = 16"
+        )
+        .execute(pool)
+        .await?
+        .rows_affected();
+
+        // If thumbnails were cleared, delete the thumbnail files
+        if updated_rows > 0 {
+            let thumbnail_dir =
+                crate::utils::paths::get_thumbnail_cache_dir_for_folder(folder_path);
+            if thumbnail_dir.exists() {
+                // Delete all thumbnail files (they'll be regenerated on next scan)
+                if let Err(e) = std::fs::remove_dir_all(&thumbnail_dir) {
+                    eprintln!("Warning: Failed to delete old thumbnails: {}", e);
+                }
+                // Recreate the directory
+                let _ = std::fs::create_dir_all(&thumbnail_dir);
+            }
+        }
 
         Ok(())
     }

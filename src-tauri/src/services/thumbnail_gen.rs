@@ -16,7 +16,7 @@ impl ThumbnailGenerator {
     /// # Arguments
     /// * `video_path` - Path to the video file
     /// * `duration` - Duration of the video in seconds
-    /// * `thumbnail_count` - Number of thumbnails to generate (default: 16)
+    /// * `thumbnail_count` - Number of thumbnails to generate (default: 9 for 3x3 grid)
     ///
     /// # Returns
     /// Path to the generated thumbnail file
