@@ -45,13 +45,9 @@ jobs:
 
             ✅ All checks passed for commit \`${sha}\`
 
-            ### 📦 Download Artifacts
+            The app bundle has been built and verified successfully.
 
-            [Download SceneBrowser-dev.dmg](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
-
-            Click the link above, then download the \`scenebrowser-macos-dev-${context.payload.workflow_run.head_sha}\` artifact from the "Artifacts" section.
-
-            **Note:** This is a development build. For production releases, create a git tag.`;
+            **Note:** To download a DMG, create a release tag. CI builds only verify the app bundle for cost optimization.`;
 
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
