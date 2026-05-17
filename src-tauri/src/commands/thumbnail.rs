@@ -272,3 +272,98 @@ pub async fn generate_thumbnails_batch(
 
     Ok(generated.load(std::sync::atomic::Ordering::Relaxed))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_thumbnail_with_valid_file() {
+        // Create a temporary JPEG file
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("test_thumbnail.jpg");
+
+        // Write a minimal JPEG (1x1 pixel, black)
+        let jpeg_data = vec![
+            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00,
+            0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06,
+            0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D,
+            0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D,
+            0x1A, 0x1C, 0x1C, 0x20, 0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28,
+            0x37, 0x29, 0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
+            0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01,
+            0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xFF, 0xC4,
+            0x00, 0x14, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00,
+            0x3F, 0x00, 0x37, 0xFF, 0xD9,
+        ];
+
+        std::fs::write(&test_file, &jpeg_data).unwrap();
+
+        // Test reading the thumbnail
+        let result = tokio_test::block_on(read_thumbnail(test_file.to_string_lossy().to_string()));
+
+        assert!(result.is_ok());
+        let data_url = result.unwrap();
+        assert!(data_url.starts_with("data:image/jpeg;base64,"));
+
+        // Cleanup
+        std::fs::remove_file(&test_file).ok();
+    }
+
+    #[test]
+    fn test_read_thumbnail_with_nonexistent_file() {
+        let result = tokio_test::block_on(read_thumbnail("/nonexistent/path.jpg".to_string()));
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("Failed to read thumbnail file"));
+    }
+
+    #[test]
+    fn test_thumbnail_progress_struct() {
+        // Test that ThumbnailProgress can be serialized
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Clone, Serialize, Deserialize)]
+        struct ThumbnailProgress {
+            current: usize,
+            total: usize,
+            current_file: String,
+        }
+
+        let progress = ThumbnailProgress {
+            current: 5,
+            total: 10,
+            current_file: "test.mp4".to_string(),
+        };
+
+        let json = serde_json::to_string(&progress).unwrap();
+        assert!(json.contains("\"current\":5"));
+        assert!(json.contains("\"total\":10"));
+        assert!(json.contains("\"current_file\":\"test.mp4\""));
+    }
+
+    #[test]
+    fn test_thumbnail_generated_struct() {
+        // Test that ThumbnailGenerated can be serialized
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Clone, Serialize, Deserialize)]
+        struct ThumbnailGenerated {
+            video_id: i64,
+            thumbnail_path: String,
+        }
+
+        let generated = ThumbnailGenerated {
+            video_id: 42,
+            thumbnail_path: "/cache/thumbnail.jpg".to_string(),
+        };
+
+        let json = serde_json::to_string(&generated).unwrap();
+        assert!(json.contains("\"video_id\":42"));
+        assert!(json.contains("\"thumbnail_path\":\"/cache/thumbnail.jpg\""));
+    }
+}
