@@ -15,7 +15,7 @@ interface DeleteProgress {
 export function FolderList() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
+  const [generatingThumbnails, setGeneratingThumbnails] = useState<number | null>(null);
   const [thumbnailProgress, setThumbnailProgress] = useState<{ current: number; total: number } | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
@@ -43,8 +43,11 @@ export function FolderList() {
       });
 
       if (selected && typeof selected === 'string') {
-        await addFolder(selected, true);
+        const folderId = await addFolder(selected, true);
         await loadFolders();
+
+        // Automatically scan and generate thumbnails for newly added folder
+        await handleScanFolder(folderId);
       }
     } catch (error) {
       console.error('Failed to add folder:', error);
@@ -69,9 +72,8 @@ export function FolderList() {
       setSelectedFolder(folderId);
 
       // Automatically generate thumbnails after scan completes
-      if (result.videos_added > 0 || result.videos_updated > 0) {
-        await handleGenerateThumbnails(folderId);
-      }
+      // Always attempt generation - the backend will skip videos that already have thumbnails
+      await handleGenerateThumbnails(folderId);
     } catch (error) {
       console.error('Failed to scan folder:', error);
       setIsLoading(false);
@@ -82,7 +84,7 @@ export function FolderList() {
 
   async function handleGenerateThumbnails(folderId: number) {
     console.log('handleGenerateThumbnails called with folderId:', folderId);
-    setGeneratingThumbnails(true);
+    setGeneratingThumbnails(folderId);
     setThumbnailProgress(null);
     try {
       const generated = await generateThumbnailsBatch(folderId, (progress) => {
@@ -103,7 +105,7 @@ export function FolderList() {
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
     } finally {
-      setGeneratingThumbnails(false);
+      setGeneratingThumbnails(null);
     }
   }
 
@@ -190,11 +192,11 @@ export function FolderList() {
                 </button>
                 <button
                   onClick={() => handleGenerateThumbnails(folder.id)}
-                  disabled={generatingThumbnails || deleting !== null}
+                  disabled={generatingThumbnails !== null || deleting !== null}
                   className="btn-thumbnail"
                   title="Generate thumbnails"
                 >
-                  🖼️
+                  {generatingThumbnails === folder.id ? '⏳' : '🖼️'}
                 </button>
                 <button
                   onClick={(e) => {
@@ -208,6 +210,21 @@ export function FolderList() {
                   🗑️
                 </button>
               </div>
+              {generatingThumbnails === folder.id && thumbnailProgress && (
+                <div className="folder-thumbnail-progress">
+                  <div className="folder-progress-text">
+                    Generating thumbnails... {thumbnailProgress.current}/{thumbnailProgress.total}
+                  </div>
+                  <div className="folder-progress-bar">
+                    <div
+                      className="folder-progress-fill"
+                      style={{
+                        width: `${(thumbnailProgress.current / thumbnailProgress.total) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               {deleting === folder.id && deleteProgress && (
                 <div className="delete-progress">
                   <div className="delete-progress-text">
@@ -236,7 +253,7 @@ export function FolderList() {
         </ul>
       )}
 
-      {generatingThumbnails && thumbnailProgress && (
+      {generatingThumbnails !== null && thumbnailProgress && (
         <div className="thumbnail-progress">
           <div className="progress-text">
             Generating thumbnails... {thumbnailProgress.current}/{thumbnailProgress.total}
