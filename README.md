@@ -77,6 +77,30 @@ SceneBrowser/
 └── doc/                    # Documentation
 ```
 
+## How to Use
+
+1. **Launch the app**
+   - Double-click SceneBrowser.app from Applications folder
+   - Or run `npm run tauri dev` for development mode
+
+2. **Add a video folder**
+   - Click the `+` button in the Folders panel
+   - Select a folder containing video files
+
+3. **Scan for videos**
+   - Click the 🔄 (scan) button next to the folder
+   - Wait for the scan to complete (progress shown)
+   - Thumbnails are automatically generated after scan
+
+4. **Browse videos**
+   - Click a folder to view its videos
+   - Videos are displayed with 4x4 thumbnail grids
+   - Virtual scrolling handles large collections efficiently
+
+5. **Manage folders**
+   - 🖼️ (thumbnail) button: Regenerate thumbnails for videos
+   - 🗑️ (delete) button: Remove folder from library (with progress)
+
 ## Features (Phase 1 MVP)
 
 - ✅ Folder registration and scanning
