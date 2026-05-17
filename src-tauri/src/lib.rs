@@ -42,7 +42,7 @@ pub fn run() {
                 .open(&log_path)
                 .ok();
 
-            let log_msg = |msg: &str| {
+            let mut log_msg = |msg: &str| {
                 eprintln!("{}", msg);
                 if let Some(ref mut file) = log_file {
                     let _ = writeln!(file, "{}", msg);
