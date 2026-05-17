@@ -23,6 +23,7 @@ interface VideoStore {
   setError: (error: string | null) => void;
   setScanProgress: (progress: { current: number; total: number; file: string } | null) => void;
   clearVideos: () => void;
+  updateVideoThumbnail: (videoId: number, thumbnailPath: string) => void;
 }
 
 export const useVideoStore = create<VideoStore>((set) => ({
@@ -60,4 +61,11 @@ export const useVideoStore = create<VideoStore>((set) => ({
   setScanProgress: (progress) => set({ scanProgress: progress }),
 
   clearVideos: () => set({ videos: [] }),
+
+  updateVideoThumbnail: (videoId, thumbnailPath) =>
+    set((state) => ({
+      videos: state.videos.map((video) =>
+        video.id === videoId ? { ...video, thumbnail_path: thumbnailPath } : video
+      ),
+    })),
 }));
