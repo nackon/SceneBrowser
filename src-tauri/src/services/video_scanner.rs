@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Supported video file extensions
-const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mkv", "avi", "mov", "webm", "m4v"];
+const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mkv", "avi", "mov", "webm", "m4v", "wmv"];
 
 /// Video Scanner service for discovering video files in directories
 pub struct VideoScanner;
@@ -62,6 +62,8 @@ mod tests {
         assert!(VideoScanner::is_video_file(Path::new("test.MP4")));
         assert!(VideoScanner::is_video_file(Path::new("test.mkv")));
         assert!(VideoScanner::is_video_file(Path::new("test.avi")));
+        assert!(VideoScanner::is_video_file(Path::new("test.wmv")));
+        assert!(VideoScanner::is_video_file(Path::new("test.WMV")));
         assert!(!VideoScanner::is_video_file(Path::new("test.txt")));
         assert!(!VideoScanner::is_video_file(Path::new("test.jpg")));
     }
@@ -101,5 +103,6 @@ mod tests {
         assert!(extensions.contains(&"mov"));
         assert!(extensions.contains(&"webm"));
         assert!(extensions.contains(&"m4v"));
+        assert!(extensions.contains(&"wmv"));
     }
 }
