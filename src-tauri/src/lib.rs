@@ -28,17 +28,40 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Debug: Log FFmpeg detection on startup
-            eprintln!("=== SceneBrowser Starting ===");
-            eprintln!("[DEBUG] Checking FFmpeg availability on startup...");
+            // Write to both stderr and a log file for debugging
+            use std::fs::OpenOptions;
+            use std::io::Write;
+
+            let log_path = std::env::var("HOME")
+                .map(|home| format!("{}/scenebrowser-debug.log", home))
+                .unwrap_or_else(|_| "/tmp/scenebrowser-debug.log".to_string());
+
+            let mut log_file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_path)
+                .ok();
+
+            let log_msg = |msg: &str| {
+                eprintln!("{}", msg);
+                if let Some(ref mut file) = log_file {
+                    let _ = writeln!(file, "{}", msg);
+                }
+            };
+
+            log_msg("=== SceneBrowser Starting ===");
+            log_msg(&format!("[DEBUG] Log file: {}", log_path));
+            log_msg("[DEBUG] Checking FFmpeg availability on startup...");
+
             match check_ffmpeg_availability() {
                 Ok(_) => {
-                    eprintln!("[DEBUG] FFmpeg check successful");
+                    log_msg("[DEBUG] FFmpeg check successful");
                     if let Ok(ffmpeg_version) = get_ffmpeg_version() {
-                        eprintln!("[DEBUG] FFmpeg version: {}", ffmpeg_version);
+                        log_msg(&format!("[DEBUG] FFmpeg version: {}", ffmpeg_version));
                     }
                 }
                 Err(e) => {
-                    eprintln!("[DEBUG] FFmpeg check FAILED: {:?}", e);
+                    log_msg(&format!("[DEBUG] FFmpeg check FAILED: {:?}", e));
                 }
             }
 
