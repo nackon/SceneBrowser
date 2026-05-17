@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { open, confirm } from '@tauri-apps/plugin-dialog';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { Trash2 } from 'lucide-react';
 import { getFolders, addFolder, scanFolder, removeFolder, generateThumbnailsBatch, getVideos } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
 import type { Folder } from '../types/video';
@@ -221,7 +222,7 @@ export function FolderList() {
                   className="btn-delete"
                   title="Remove folder"
                 >
-                  🗑️
+                  <Trash2 size={16} />
                 </button>
               </div>
               {generatingThumbnails === folder.id && thumbnailProgress && (
