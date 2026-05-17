@@ -99,7 +99,6 @@ export function FolderList() {
   }
 
   async function handleGenerateThumbnails(folderId: number) {
-    console.log('handleGenerateThumbnails called with folderId:', folderId);
     setGeneratingThumbnails(folderId);
     setThumbnailProgress(null);
     try {
@@ -110,10 +109,13 @@ export function FolderList() {
         });
       });
 
-      console.log(`Generated ${generated} thumbnails`);
       setThumbnailProgress(null);
 
-      // No need to reload - individual thumbnails are updated via events
+      // Refresh video list to show updated thumbnails
+      if (selectedFolder === folderId) {
+        const videos = await getVideos(folderId, 100, 0);
+        setVideos(videos);
+      }
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
     } finally {
