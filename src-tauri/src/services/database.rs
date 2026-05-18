@@ -1,5 +1,5 @@
 use crate::error::{AppError, Result};
-use crate::models::{Folder, Video, VideoInsert};
+use crate::models::{Folder, Video, VideoInsert, VideoPlayerSetting};
 use crate::utils::paths::{get_database_path, get_database_path_for_folder, get_scenebrowser_dir};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use std::collections::HashMap;
@@ -41,11 +41,13 @@ impl GlobalDatabase {
 
     /// Run database migrations
     async fn run_migrations(pool: &SqlitePool) -> Result<()> {
-        // Read migration file
-        let migration_sql = include_str!("../../migrations/001_initial_schema.sql");
+        // Read migration files
+        let migration_001 = include_str!("../../migrations/001_initial_schema.sql");
+        let migration_002 = include_str!("../../migrations/002_video_player_settings.sql");
 
-        // Execute migration
-        sqlx::query(migration_sql).execute(pool).await?;
+        // Execute migrations in order
+        sqlx::query(migration_001).execute(pool).await?;
+        sqlx::query(migration_002).execute(pool).await?;
 
         Ok(())
     }
@@ -425,5 +427,77 @@ impl DatabaseManager {
         all_videos.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
         Ok(all_videos)
+    }
+
+    // --- Video Player Settings Operations ---
+
+    /// Get all video player settings
+    pub async fn get_video_player_settings(&self) -> Result<Vec<VideoPlayerSetting>> {
+        let settings = sqlx::query_as::<_, VideoPlayerSetting>(
+            "SELECT id, file_extension, player_path, created_at, updated_at
+             FROM video_player_settings
+             ORDER BY CASE WHEN file_extension = '*' THEN 1 ELSE 0 END, file_extension",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(settings)
+    }
+
+    /// Get video player setting for a specific file extension
+    pub async fn get_player_for_extension(&self, extension: &str) -> Result<Option<String>> {
+        // Try to find setting for specific extension
+        let specific: Option<(String,)> = sqlx::query_as(
+            "SELECT player_path FROM video_player_settings WHERE file_extension = ?",
+        )
+        .bind(extension.to_lowercase())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some((player_path,)) = specific {
+            return Ok(Some(player_path));
+        }
+
+        // Fall back to default setting (*)
+        let default: Option<(String,)> = sqlx::query_as(
+            "SELECT player_path FROM video_player_settings WHERE file_extension = '*'",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(default.map(|(player_path,)| player_path))
+    }
+
+    /// Set video player for a file extension
+    pub async fn set_video_player(&self, file_extension: &str, player_path: &str) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO video_player_settings (file_extension, player_path, updated_at)
+             VALUES (?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(file_extension)
+             DO UPDATE SET player_path = excluded.player_path, updated_at = CURRENT_TIMESTAMP",
+        )
+        .bind(file_extension.to_lowercase())
+        .bind(player_path)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Delete video player setting for a file extension
+    pub async fn delete_video_player_setting(&self, file_extension: &str) -> Result<()> {
+        // Don't allow deletion of default setting
+        if file_extension == "*" {
+            return Err(AppError::Other(
+                "Cannot delete default player setting".to_string(),
+            ));
+        }
+
+        sqlx::query("DELETE FROM video_player_settings WHERE file_extension = ?")
+            .bind(file_extension.to_lowercase())
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
     }
 }

@@ -89,6 +89,10 @@ pub fn run() {
             commands::thumbnail::generate_thumbnails_batch,
             commands::thumbnail::read_thumbnail,
             commands::system::check_ffmpeg,
+            commands::settings::get_video_player_settings,
+            commands::settings::set_video_player_setting,
+            commands::settings::delete_video_player_setting,
+            commands::settings::open_video_with_player,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
