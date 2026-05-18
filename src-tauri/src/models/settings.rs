@@ -9,9 +9,3 @@ pub struct VideoPlayerSetting {
     pub created_at: String,
     pub updated_at: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VideoPlayerSettingInput {
-    pub file_extension: String,
-    pub player_path: String,
-}
