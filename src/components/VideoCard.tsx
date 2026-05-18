@@ -78,8 +78,8 @@ export function VideoCard({ video, onThumbnailRegenerated }: VideoCardProps) {
   const handleClick = async () => {
     console.log('Video card clicked, path:', video.path);
     try {
-      console.log('Opening video...');
-      await invoke('plugin:opener|open_path', { path: video.path });
+      console.log('Opening video with configured player...');
+      await invoke('open_video_with_player', { videoPath: video.path });
       console.log('Video opened successfully');
     } catch (err) {
       console.error('Failed to open video:', err);
