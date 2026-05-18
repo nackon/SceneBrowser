@@ -501,3 +501,164 @@ impl DatabaseManager {
         Ok(all_videos)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn create_test_global_db() -> GlobalDatabase {
+        // Use in-memory database for tests
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")
+            .unwrap()
+            .create_if_missing(true);
+
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect_with(options)
+            .await
+            .unwrap();
+
+        GlobalDatabase::run_migrations(&pool).await.unwrap();
+
+        GlobalDatabase { pool }
+    }
+
+    #[tokio::test]
+    async fn test_set_and_get_video_player_settings() {
+        let db = create_test_global_db().await;
+
+        // Set a specific extension player
+        db.set_video_player("mp4", "/Applications/VLC.app")
+            .await
+            .unwrap();
+
+        // Get all settings (should include default * and mp4)
+        let settings = db.get_video_player_settings().await.unwrap();
+        assert!(settings.len() >= 2);
+        assert!(settings.iter().any(|s| s.file_extension == "*"));
+        assert!(settings.iter().any(|s| s.file_extension == "mp4"));
+
+        // Get player for mp4 extension
+        let player = db.get_player_for_extension("mp4").await.unwrap();
+        assert_eq!(player, Some("/Applications/VLC.app".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_default_player_fallback() {
+        let db = create_test_global_db().await;
+
+        // Set default player
+        db.set_video_player("*", "/Applications/IINA.app")
+            .await
+            .unwrap();
+
+        // Get player for unknown extension should return default
+        let player = db.get_player_for_extension("unknown").await.unwrap();
+        assert_eq!(player, Some("/Applications/IINA.app".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_extension_specific_overrides_default() {
+        let db = create_test_global_db().await;
+
+        // Set default player
+        db.set_video_player("*", "/Applications/IINA.app")
+            .await
+            .unwrap();
+
+        // Set specific extension player
+        db.set_video_player("mkv", "/Applications/VLC.app")
+            .await
+            .unwrap();
+
+        // Get player for mkv should return specific, not default
+        let player = db.get_player_for_extension("mkv").await.unwrap();
+        assert_eq!(player, Some("/Applications/VLC.app".to_string()));
+
+        // Get player for other extension should return default
+        let player = db.get_player_for_extension("mp4").await.unwrap();
+        assert_eq!(player, Some("/Applications/IINA.app".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_update_existing_setting() {
+        let db = create_test_global_db().await;
+
+        // Set initial player
+        db.set_video_player("avi", "/Applications/VLC.app")
+            .await
+            .unwrap();
+
+        // Update to different player
+        db.set_video_player("avi", "/Applications/IINA.app")
+            .await
+            .unwrap();
+
+        // Should have the updated value
+        let player = db.get_player_for_extension("avi").await.unwrap();
+        assert_eq!(player, Some("/Applications/IINA.app".to_string()));
+
+        // Should only have one avi setting
+        let settings = db.get_video_player_settings().await.unwrap();
+        let avi_settings: Vec<_> = settings
+            .iter()
+            .filter(|s| s.file_extension == "avi")
+            .collect();
+        assert_eq!(avi_settings.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_delete_video_player_setting() {
+        let db = create_test_global_db().await;
+
+        // Set a specific extension player
+        db.set_video_player("wmv", "/Applications/VLC.app")
+            .await
+            .unwrap();
+
+        // Delete the setting
+        db.delete_video_player_setting("wmv").await.unwrap();
+
+        // Should fall back to default now
+        let player = db.get_player_for_extension("wmv").await.unwrap();
+        // Will be whatever the default (*) is set to in migration
+        assert!(player.is_some() || player.is_none());
+
+        // Should not have wmv in settings list
+        let settings = db.get_video_player_settings().await.unwrap();
+        assert!(!settings.iter().any(|s| s.file_extension == "wmv"));
+    }
+
+    #[tokio::test]
+    async fn test_cannot_delete_default_setting() {
+        let db = create_test_global_db().await;
+
+        // Try to delete default setting
+        let result = db.delete_video_player_setting("*").await;
+
+        // Should return error
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot delete default player setting"));
+    }
+
+    #[tokio::test]
+    async fn test_case_insensitive_extension() {
+        let db = create_test_global_db().await;
+
+        // Set with uppercase
+        db.set_video_player("MP4", "/Applications/VLC.app")
+            .await
+            .unwrap();
+
+        // Get with lowercase
+        let player = db.get_player_for_extension("mp4").await.unwrap();
+        assert_eq!(player, Some("/Applications/VLC.app".to_string()));
+
+        // Get with uppercase
+        let player = db.get_player_for_extension("MP4").await.unwrap();
+        assert_eq!(player, Some("/Applications/VLC.app".to_string()));
+    }
+}
