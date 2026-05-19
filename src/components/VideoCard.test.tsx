@@ -37,7 +37,7 @@ describe('VideoCard', () => {
     vi.clearAllMocks();
   });
 
-  it('calls invoke with opener plugin when clicked', async () => {
+  it('calls invoke with open_video_with_player when clicked', async () => {
     const user = userEvent.setup();
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValue(undefined);
@@ -50,8 +50,8 @@ describe('VideoCard', () => {
     await user.click(card!);
 
     await waitFor(() => {
-      expect(invokeMock).toHaveBeenCalledWith('plugin:opener|open_path', {
-        path: '/test/video.mp4',
+      expect(invokeMock).toHaveBeenCalledWith('open_video_with_player', {
+        videoPath: '/test/video.mp4',
       });
     });
   });

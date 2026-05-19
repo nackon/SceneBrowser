@@ -1,12 +1,20 @@
 :root {
   --bg-primary: #1a1a1a;
   --bg-secondary: #2a2a2a;
+  --bg-tertiary: #353535;
   --bg-hover: #333333;
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
+  --text-tertiary: #707070;
   --border-color: #404040;
+  --border-highlight: #3b82f6;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
   --accent-color: #3b82f6;
   --error-color: #ef4444;
+  --error-hover: #dc2626;
+  --success-color: #10b981;
+  --success-hover: #059669;
 }
 
 * {
@@ -30,7 +38,37 @@ body {
 .main-content {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nav-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.nav-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-button.active {
+  background: var(--primary-color);
+  color: white;
 }
 
 .error-message {
