@@ -155,6 +155,11 @@ impl FolderDatabase {
         // Execute migration
         sqlx::query(migration_sql).execute(pool).await?;
 
+        // Migration: Add is_favorite column if it doesn't exist
+        let favorites_migration = include_str!("../../migrations/003_add_favorites.sql");
+        // Ignore errors if column already exists
+        let _ = sqlx::query(favorites_migration).execute(pool).await;
+
         // Update existing videos with old default (16) to new default (9)
         // Clear thumbnail_path to force regeneration with new grid size
         let updated_rows = sqlx::query(
@@ -212,7 +217,7 @@ impl FolderDatabase {
         let videos = sqlx::query_as::<_, Video>(
             r#"
             SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
-                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating, is_favorite,
                    created_at, updated_at, scanned_at
             FROM videos
             ORDER BY created_at DESC
@@ -234,7 +239,7 @@ impl FolderDatabase {
         let videos = sqlx::query_as::<_, Video>(
             r#"
             SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
-                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating, is_favorite,
                    created_at, updated_at, scanned_at
             FROM videos
             WHERE filename LIKE ? COLLATE NOCASE OR path LIKE ? COLLATE NOCASE
@@ -255,7 +260,7 @@ impl FolderDatabase {
         let video = sqlx::query_as::<_, Video>(
             r#"
             SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
-                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating, is_favorite,
                    created_at, updated_at, scanned_at
             FROM videos
             WHERE id = ?
@@ -331,7 +336,7 @@ impl FolderDatabase {
         let videos = sqlx::query_as::<_, Video>(
             r#"
             SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
-                   codec, framerate, thumbnail_path, thumbnail_count, rating,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating, is_favorite,
                    created_at, updated_at, scanned_at
             FROM videos
             ORDER BY created_at DESC
@@ -341,6 +346,59 @@ impl FolderDatabase {
         .await?;
 
         Ok(videos)
+    }
+
+    /// Toggle favorite status for a video
+    pub async fn toggle_favorite(&self, video_id: i64) -> Result<bool> {
+        // Get current favorite status
+        let current: Option<(i64,)> = sqlx::query_as("SELECT is_favorite FROM videos WHERE id = ?")
+            .bind(video_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        let current_status = current.ok_or(AppError::VideoNotFound(video_id))?.0;
+        let new_status = if current_status == 1 { 0 } else { 1 };
+
+        // Update favorite status
+        sqlx::query(
+            "UPDATE videos SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .bind(new_status)
+        .bind(video_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(new_status == 1)
+    }
+
+    /// Get favorite videos with pagination
+    pub async fn get_favorite_videos(&self, limit: i64, offset: i64) -> Result<Vec<Video>> {
+        let videos = sqlx::query_as::<_, Video>(
+            r#"
+            SELECT id, 0 as folder_id, path, filename, hash, duration, width, height, size,
+                   codec, framerate, thumbnail_path, thumbnail_count, rating, is_favorite,
+                   created_at, updated_at, scanned_at
+            FROM videos
+            WHERE is_favorite = 1
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(videos)
+    }
+
+    /// Get count of favorite videos
+    pub async fn get_favorite_count(&self) -> Result<i64> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM videos WHERE is_favorite = 1")
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(count.0)
     }
 }
 

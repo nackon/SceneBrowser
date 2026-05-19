@@ -18,6 +18,7 @@ pub struct Video {
     pub thumbnail_path: Option<String>,
     pub thumbnail_count: i64,
     pub rating: i64,
+    pub is_favorite: i64,
     pub created_at: String,
     pub updated_at: String,
     pub scanned_at: String,

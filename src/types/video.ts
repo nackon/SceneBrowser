@@ -13,6 +13,7 @@ export interface Video {
   thumbnail_path: string | null;
   thumbnail_count: number;
   rating: number; // 0-5
+  is_favorite: number; // 0 or 1
   created_at: string; // ISO 8601
   updated_at: string; // ISO 8601
   scanned_at: string; // ISO 8601

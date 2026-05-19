@@ -89,6 +89,9 @@ pub fn run() {
             commands::thumbnail::generate_thumbnails_batch,
             commands::thumbnail::read_thumbnail,
             commands::system::check_ffmpeg,
+            commands::favorites::toggle_favorite,
+            commands::favorites::get_favorite_videos,
+            commands::favorites::get_favorite_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
