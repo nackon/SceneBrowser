@@ -42,7 +42,7 @@ describe('VideoCard', () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValue(undefined);
 
-    render(<VideoCard video={mockVideo} />);
+    render(<VideoCard video={mockVideo} folderId={1} />);
 
     const card = screen.getByText('test-video.mp4').closest('.video-card');
     expect(card).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('VideoCard', () => {
 
     invokeMock.mockRejectedValue(new Error('Permission denied'));
 
-    render(<VideoCard video={mockVideo} />);
+    render(<VideoCard video={mockVideo} folderId={1} />);
 
     const card = screen.getByText('test-video.mp4').closest('.video-card');
     await user.click(card!);
@@ -78,7 +78,7 @@ describe('VideoCard', () => {
   });
 
   it('displays video metadata correctly', () => {
-    render(<VideoCard video={mockVideo} />);
+    render(<VideoCard video={mockVideo} folderId={1} />);
 
     expect(screen.getByText('test-video.mp4')).toBeInTheDocument();
     expect(screen.getByText('1920x1080')).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('VideoCard', () => {
 
   it('formats duration correctly for hours', () => {
     const longVideo = { ...mockVideo, duration: 7265 }; // 2:01:05
-    render(<VideoCard video={longVideo} />);
+    render(<VideoCard video={longVideo} folderId={1} />);
 
     expect(screen.getByText('2:01:05')).toBeInTheDocument();
   });
@@ -99,7 +99,7 @@ describe('VideoCard', () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValue(undefined);
 
-    render(<VideoCard video={mockVideo} />);
+    render(<VideoCard video={mockVideo} folderId={1} />);
 
     const card = screen.getByText('test-video.mp4').closest('.video-card');
     await user.click(card!);

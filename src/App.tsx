@@ -119,7 +119,7 @@ function App() {
                 <p className="hint">Click the ★ button on videos to add them to favorites</p>
               </div>
             ) : (
-              <VideoGrid videos={filteredVideos} />
+              <VideoGrid videos={filteredVideos} selectedFolder={selectedFolder} />
             )}
           </>
         ) : (

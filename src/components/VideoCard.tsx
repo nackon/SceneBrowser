@@ -6,11 +6,12 @@ import './VideoCard.css';
 
 interface VideoCardProps {
   video: Video;
+  folderId: number | null;
   onThumbnailRegenerated?: () => void;
   onFavoriteToggled?: () => void;
 }
 
-export function VideoCard({ video, onThumbnailRegenerated, onFavoriteToggled }: VideoCardProps) {
+export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteToggled }: VideoCardProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -91,8 +92,12 @@ export function VideoCard({ video, onThumbnailRegenerated, onFavoriteToggled }: 
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (folderId === null) {
+      alert('Please select a folder first');
+      return;
+    }
     try {
-      const newStatus = await toggleFavorite(video.folder_id, video.id);
+      const newStatus = await toggleFavorite(folderId, video.id);
       setIsFavorite(newStatus);
       if (onFavoriteToggled) {
         onFavoriteToggled();
