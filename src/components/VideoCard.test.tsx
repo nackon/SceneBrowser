@@ -9,6 +9,8 @@ import type { Video } from '../types/video';
 vi.mock('../services/commands', () => ({
   generateThumbnail: vi.fn(),
   readThumbnail: vi.fn(),
+  regenerateThumbnail: vi.fn(),
+  toggleFavorite: vi.fn(),
 }));
 
 describe('VideoCard', () => {
@@ -109,9 +111,135 @@ describe('VideoCard', () => {
         'Video card clicked, path:',
         '/test/video.mp4'
       );
-      expect(consoleLogMock).toHaveBeenCalledWith('Opening video...');
+      expect(consoleLogMock).toHaveBeenCalledWith('Opening video with configured player...');
     });
 
     consoleLogMock.mockRestore();
+  });
+
+  describe('Favorites', () => {
+    it('displays favorite button', () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      expect(favoriteButton).toBeInTheDocument();
+    });
+
+    it('shows empty star for non-favorite video', () => {
+      const nonFavoriteVideo = { ...mockVideo, is_favorite: 0 };
+      render(<VideoCard video={nonFavoriteVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      expect(favoriteButton?.textContent).toBe('☆');
+      expect(favoriteButton).not.toHaveClass('favorite');
+    });
+
+    it('shows filled star for favorite video', () => {
+      const favoriteVideo = { ...mockVideo, is_favorite: 1 };
+      render(<VideoCard video={favoriteVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      expect(favoriteButton?.textContent).toBe('★');
+      expect(favoriteButton).toHaveClass('favorite');
+    });
+
+    it('toggles favorite when button is clicked', async () => {
+      const user = userEvent.setup();
+      const { toggleFavorite } = await import('../services/commands');
+      const toggleFavoriteMock = vi.mocked(toggleFavorite);
+      toggleFavoriteMock.mockResolvedValue(true);
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      expect(favoriteButton?.textContent).toBe('☆');
+
+      await user.click(favoriteButton!);
+
+      await waitFor(() => {
+        expect(toggleFavoriteMock).toHaveBeenCalledWith(1, 1);
+        expect(favoriteButton?.textContent).toBe('★');
+      });
+    });
+
+    it('shows alert when folderId is null', async () => {
+      const user = userEvent.setup();
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<VideoCard video={mockVideo} folderId={null} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      await user.click(favoriteButton!);
+
+      expect(alertMock).toHaveBeenCalledWith('Please select a folder first');
+      alertMock.mockRestore();
+    });
+
+    it('shows alert when toggle fails', async () => {
+      const user = userEvent.setup();
+      const { toggleFavorite } = await import('../services/commands');
+      const toggleFavoriteMock = vi.mocked(toggleFavorite);
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      toggleFavoriteMock.mockRejectedValue(new Error('Network error'));
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      await user.click(favoriteButton!);
+
+      await waitFor(() => {
+        expect(alertMock).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to toggle favorite')
+        );
+      });
+
+      alertMock.mockRestore();
+    });
+
+    it('calls onFavoriteToggled callback when toggled', async () => {
+      const user = userEvent.setup();
+      const { toggleFavorite } = await import('../services/commands');
+      const toggleFavoriteMock = vi.mocked(toggleFavorite);
+      const onFavoriteToggled = vi.fn();
+
+      toggleFavoriteMock.mockResolvedValue(true);
+
+      render(
+        <VideoCard
+          video={mockVideo}
+          folderId={1}
+          onFavoriteToggled={onFavoriteToggled}
+        />
+      );
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      await user.click(favoriteButton!);
+
+      await waitFor(() => {
+        expect(onFavoriteToggled).toHaveBeenCalled();
+      });
+    });
+
+    it('does not trigger video opening when favorite button is clicked', async () => {
+      const user = userEvent.setup();
+      const { toggleFavorite } = await import('../services/commands');
+      const toggleFavoriteMock = vi.mocked(toggleFavorite);
+      const invokeMock = vi.mocked(invoke);
+
+      toggleFavoriteMock.mockResolvedValue(true);
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const favoriteButton = document.querySelector('.favorite-button');
+      await user.click(favoriteButton!);
+
+      await waitFor(() => {
+        expect(toggleFavoriteMock).toHaveBeenCalled();
+      });
+
+      // Should not have called open_video_with_player
+      expect(invokeMock).not.toHaveBeenCalledWith('open_video_with_player', expect.any(Object));
+    });
   });
 });
