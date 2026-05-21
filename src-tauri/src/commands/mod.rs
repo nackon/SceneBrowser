@@ -1,3 +1,4 @@
+pub mod favorites;
 pub mod folder;
 pub mod settings;
 pub mod system;

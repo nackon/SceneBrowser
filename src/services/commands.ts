@@ -103,3 +103,21 @@ export async function readThumbnail(thumbnailPath: string): Promise<string> {
 export async function checkFFmpeg(): Promise<void> {
   await invoke('check_ffmpeg');
 }
+
+// --- Favorites Commands ---
+
+export async function toggleFavorite(folderId: number, videoId: number): Promise<boolean> {
+  return await invoke<boolean>('toggle_favorite', { folderId, videoId });
+}
+
+export async function getFavoriteVideos(
+  folderId: number,
+  limit: number,
+  offset: number
+): Promise<Video[]> {
+  return await invoke<Video[]>('get_favorite_videos', { folderId, limit, offset });
+}
+
+export async function getFavoriteCount(folderId: number): Promise<number> {
+  return await invoke<number>('get_favorite_count', { folderId });
+}

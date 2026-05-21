@@ -140,6 +140,7 @@ describe('FolderList', () => {
         thumbnail_path: null,
         thumbnail_count: 9,
         rating: 0,
+        is_favorite: 0,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
         scanned_at: '2026-01-01T00:00:00Z',

@@ -93,6 +93,9 @@ pub fn run() {
             commands::settings::set_video_player_setting,
             commands::settings::delete_video_player_setting,
             commands::settings::open_video_with_player,
+            commands::favorites::toggle_favorite,
+            commands::favorites::get_favorite_videos,
+            commands::favorites::get_favorite_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

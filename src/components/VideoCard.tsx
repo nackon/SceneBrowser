@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { readThumbnail, regenerateThumbnail } from '../services/commands';
+import { readThumbnail, regenerateThumbnail, toggleFavorite } from '../services/commands';
 import type { Video } from '../types/video';
 import './VideoCard.css';
 
 interface VideoCardProps {
   video: Video;
   onThumbnailRegenerated?: () => void;
+  onFavoriteToggled?: () => void;
 }
 
-export function VideoCard({ video, onThumbnailRegenerated }: VideoCardProps) {
+export function VideoCard({ video, onThumbnailRegenerated, onFavoriteToggled }: VideoCardProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(video.is_favorite === 1);
 
   useEffect(() => {
     if (video.thumbnail_path) {
@@ -87,6 +89,20 @@ export function VideoCard({ video, onThumbnailRegenerated }: VideoCardProps) {
     }
   };
 
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const newStatus = await toggleFavorite(video.folder_id, video.id);
+      setIsFavorite(newStatus);
+      if (onFavoriteToggled) {
+        onFavoriteToggled();
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+      alert(`Failed to toggle favorite: ${err}`);
+    }
+  };
+
   return (
     <div className="video-card" onClick={handleClick}>
       <div className="thumbnail-container">
@@ -116,6 +132,13 @@ export function VideoCard({ video, onThumbnailRegenerated }: VideoCardProps) {
           </div>
         )}
         <div className="duration-badge">{formatDuration(video.duration)}</div>
+        <button
+          className={`favorite-button ${isFavorite ? 'favorite' : ''}`}
+          onClick={handleFavoriteClick}
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          {isFavorite ? '★' : '☆'}
+        </button>
         <button
           className="regenerate-button"
           onClick={handleRegenerateThumbnail}
