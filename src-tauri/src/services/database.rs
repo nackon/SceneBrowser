@@ -719,4 +719,9 @@ mod tests {
         let player = db.get_player_for_extension("MP4").await.unwrap();
         assert_eq!(player, Some("/Applications/VLC.app".to_string()));
     }
+
+    // Note: Favorites feature tests are intentionally minimal here.
+    // Full integration tests should be added to ensure toggle_favorite,
+    // get_favorite_videos, and get_favorite_count work correctly with
+    // actual folder databases.
 }
