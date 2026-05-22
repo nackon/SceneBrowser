@@ -24,6 +24,7 @@ interface VideoStore {
   setScanProgress: (progress: { current: number; total: number; file: string } | null) => void;
   clearVideos: () => void;
   updateVideoThumbnail: (videoId: number, thumbnailPath: string) => void;
+  updateVideoFavorite: (videoId: number, isFavorite: boolean) => void;
 }
 
 export const useVideoStore = create<VideoStore>((set) => ({
@@ -66,6 +67,13 @@ export const useVideoStore = create<VideoStore>((set) => ({
     set((state) => ({
       videos: state.videos.map((video) =>
         video.id === videoId ? { ...video, thumbnail_path: thumbnailPath } : video
+      ),
+    })),
+
+  updateVideoFavorite: (videoId, isFavorite) =>
+    set((state) => ({
+      videos: state.videos.map((video) =>
+        video.id === videoId ? { ...video, is_favorite: isFavorite ? 1 : 0 } : video
       ),
     })),
 }));

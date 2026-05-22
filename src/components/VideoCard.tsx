@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { readThumbnail, regenerateThumbnail, toggleFavorite } from '../services/commands';
+import { useVideoStore } from '../store/videoStore';
 import type { Video } from '../types/video';
 import './VideoCard.css';
 
@@ -12,6 +13,7 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteToggled }: VideoCardProps) {
+  const updateVideoFavorite = useVideoStore((state) => state.updateVideoFavorite);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -99,6 +101,7 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
     try {
       const newStatus = await toggleFavorite(folderId, video.id);
       setIsFavorite(newStatus);
+      updateVideoFavorite(video.id, newStatus);
       if (onFavoriteToggled) {
         onFavoriteToggled();
       }
