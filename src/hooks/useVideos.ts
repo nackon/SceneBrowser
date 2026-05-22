@@ -5,7 +5,7 @@ import { getVideos } from '../services/commands';
 /**
  * Custom hook to fetch videos for the selected folder
  */
-export function useVideos(folderId: number | null, limit = 100) {
+export function useVideos(folderId: number | null) {
   const { setVideos, setIsLoading, setError } = useVideoStore();
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function useVideos(folderId: number | null, limit = 100) {
       setError(null);
 
       try {
-        const videos = await getVideos(folderId, limit, 0);
+        const videos = await getVideos(folderId, 10000, 0);
         if (!cancelled) {
           setVideos(videos);
         }
@@ -43,5 +43,5 @@ export function useVideos(folderId: number | null, limit = 100) {
     return () => {
       cancelled = true;
     };
-  }, [folderId, limit, setVideos, setIsLoading, setError]);
+  }, [folderId, setVideos, setIsLoading, setError]);
 }

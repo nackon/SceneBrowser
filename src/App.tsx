@@ -30,7 +30,7 @@ function App() {
   }, []);
 
   // Fetch videos when selected folder changes
-  useVideos(selectedFolder, 100);
+  useVideos(selectedFolder);
 
   // Update favorite count when folder or videos change
   useEffect(() => {
