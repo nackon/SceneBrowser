@@ -256,4 +256,87 @@ describe('videoStore', () => {
       expect(result.current.videos).toEqual([]);
     });
   });
+
+  describe('updateVideoFavorite', () => {
+    it('should update is_favorite to 1 when setting to true', () => {
+      const { result } = renderHook(() => useVideoStore());
+
+      act(() => {
+        result.current.setVideos([mockVideo1, mockVideo2]);
+        result.current.updateVideoFavorite(1, true);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(1);
+      expect(result.current.videos[1].is_favorite).toBe(0);
+    });
+
+    it('should update is_favorite to 0 when setting to false', () => {
+      const { result } = renderHook(() => useVideoStore());
+      const favoriteVideo = { ...mockVideo1, is_favorite: 1 };
+
+      act(() => {
+        result.current.setVideos([favoriteVideo, mockVideo2]);
+        result.current.updateVideoFavorite(1, false);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(0);
+      expect(result.current.videos[1].is_favorite).toBe(0);
+    });
+
+    it('should not modify other video properties', () => {
+      const { result } = renderHook(() => useVideoStore());
+
+      act(() => {
+        result.current.setVideos([mockVideo1]);
+        result.current.updateVideoFavorite(1, true);
+      });
+
+      expect(result.current.videos[0]).toEqual({
+        ...mockVideo1,
+        is_favorite: 1,
+      });
+    });
+
+    it('should handle non-existent video id gracefully', () => {
+      const { result } = renderHook(() => useVideoStore());
+
+      act(() => {
+        result.current.setVideos([mockVideo1]);
+        result.current.updateVideoFavorite(999, true);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(0);
+    });
+
+    it('should update only the matching video when multiple videos exist', () => {
+      const { result } = renderHook(() => useVideoStore());
+      const video3 = { ...mockVideo1, id: 3 };
+
+      act(() => {
+        result.current.setVideos([mockVideo1, mockVideo2, video3]);
+        result.current.updateVideoFavorite(2, true);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(0);
+      expect(result.current.videos[1].is_favorite).toBe(1);
+      expect(result.current.videos[2].is_favorite).toBe(0);
+    });
+
+    it('should toggle favorite status correctly', () => {
+      const { result } = renderHook(() => useVideoStore());
+
+      act(() => {
+        result.current.setVideos([mockVideo1]);
+        result.current.updateVideoFavorite(1, true);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(1);
+
+      act(() => {
+        result.current.updateVideoFavorite(1, false);
+      });
+
+      expect(result.current.videos[0].is_favorite).toBe(0);
+    });
+  });
 });
