@@ -47,6 +47,15 @@ function App() {
     localStorage.setItem('video_filter_mode', mode);
   };
 
+  // Update favorite count when a video's favorite status changes
+  const handleFavoriteToggled = () => {
+    if (selectedFolder !== null) {
+      getFavoriteCount(selectedFolder)
+        .then(setFavoriteCount)
+        .catch((err) => console.error('Failed to get favorite count:', err));
+    }
+  };
+
   // Filter videos based on filter mode
   const filteredVideos = filterMode === 'favorites'
     ? videos.filter(v => v.is_favorite === 1)
@@ -119,7 +128,11 @@ function App() {
                 <p className="hint">Click the ★ button on videos to add them to favorites</p>
               </div>
             ) : (
-              <VideoGrid videos={filteredVideos} selectedFolder={selectedFolder} />
+              <VideoGrid
+                videos={filteredVideos}
+                selectedFolder={selectedFolder}
+                onFavoriteToggled={handleFavoriteToggled}
+              />
             )}
           </>
         ) : (

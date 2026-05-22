@@ -11,9 +11,10 @@ const GUTTER = 16;
 interface VideoGridProps {
   videos: Video[];
   selectedFolder: number | null;
+  onFavoriteToggled?: () => void;
 }
 
-export function VideoGrid({ videos, selectedFolder }: VideoGridProps) {
+export function VideoGrid({ videos, selectedFolder, onFavoriteToggled }: VideoGridProps) {
   return (
     <div className="video-grid-container">
       <AutoSizer
@@ -33,7 +34,7 @@ export function VideoGrid({ videos, selectedFolder }: VideoGridProps) {
               rowCount={rowCount}
               rowHeight={CARD_HEIGHT + GUTTER}
               cellComponent={Cell}
-              cellProps={{ videos, columnCount, selectedFolder }}
+              cellProps={{ videos, columnCount, selectedFolder, onFavoriteToggled }}
             />
           );
         }}
@@ -46,11 +47,12 @@ interface CellData {
   videos: Video[];
   columnCount: number;
   selectedFolder: number | null;
+  onFavoriteToggled?: () => void;
 }
 
 type CellProps = CellComponentProps<CellData>;
 
-function Cell({ columnIndex, rowIndex, style, videos, columnCount, selectedFolder }: CellProps) {
+function Cell({ columnIndex, rowIndex, style, videos, columnCount, selectedFolder, onFavoriteToggled }: CellProps) {
   const index = rowIndex * (columnCount || 1) + columnIndex;
   const video = videos ? videos[index] : undefined;
 
@@ -60,7 +62,7 @@ function Cell({ columnIndex, rowIndex, style, videos, columnCount, selectedFolde
 
   return (
     <div style={{ ...style, padding: `${GUTTER / 2}px` }}>
-      <VideoCard video={video} folderId={selectedFolder} />
+      <VideoCard video={video} folderId={selectedFolder} onFavoriteToggled={onFavoriteToggled} />
     </div>
   );
 }
