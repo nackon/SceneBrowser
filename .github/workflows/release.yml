@@ -12,9 +12,6 @@ jobs:
   build-and-release:
     name: Build and Release
     runs-on: macos-latest
-    strategy:
-      matrix:
-        target: [universal-apple-darwin, x86_64-apple-darwin, aarch64-apple-darwin]
 
     steps:
       - name: Checkout code
@@ -26,10 +23,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Add Rust target
-        if: matrix.target != 'universal-apple-darwin'
-        run: rustup target add ${{ matrix.target }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,9 +42,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             src-tauri/target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-universal-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-cargo-
+            ${{ runner.os }}-universal-cargo-
 
       - name: Install npm dependencies
         run: npm ci
@@ -65,12 +58,6 @@ jobs:
           releaseName: 'SceneBrowser ${{ github.ref_name }}'
           releaseBody: |
             ## SceneBrowser ${{ github.ref_name }}
-
-            ### Downloads
-            Choose the appropriate DMG for your Mac:
-            - **Universal (Apple Silicon + Intel)**: Works on all Macs
-            - **Apple Silicon**: M1/M2/M3/M4 Macs
-            - **Intel**: Intel-based Macs
 
             ### Installation
             1. Download the DMG file
@@ -86,4 +73,3 @@ jobs:
             See [CHANGELOG.md](https://github.com/nackon/SceneBrowser/blob/main/CHANGELOG.md) for details.
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.target != 'universal-apple-darwin' && format('--target {0}', matrix.target) || '' }}
