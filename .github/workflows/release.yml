@@ -5,52 +5,12 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-
-    steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: SceneBrowser ${{ github.ref_name }}
-          body: |
-            ## SceneBrowser ${{ github.ref_name }}
-
-            ### Downloads
-            - **macOS (Universal)**: SceneBrowser_${{ steps.get_version.outputs.version }}_universal.dmg
-            - **macOS (Intel)**: SceneBrowser_${{ steps.get_version.outputs.version }}_x64.dmg
-            - **macOS (Apple Silicon)**: SceneBrowser_${{ steps.get_version.outputs.version }}_aarch64.dmg
-
-            ### Installation
-            1. Download the appropriate DMG for your Mac
-            2. Open the DMG file
-            3. Drag SceneBrowser to Applications folder
-
-            ### Requirements
-            - macOS 11.0 (Big Sur) or later
-            - FFmpeg (install via `brew install ffmpeg`)
-
-            ### Changes
-            See [CHANGELOG.md](https://github.com/nackon/SceneBrowser/blob/main/CHANGELOG.md) for details.
-          draft: false
-          prerelease: false
-
-  build-macos:
-    name: Build macOS
-    needs: create-release
+  build-and-release:
+    name: Build and Release
     runs-on: macos-latest
     strategy:
       matrix:
@@ -59,6 +19,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -77,7 +41,7 @@ jobs:
         run: brew install ffmpeg
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -92,41 +56,34 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Build Tauri app and create release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'SceneBrowser ${{ github.ref_name }}'
-          releaseBody: 'See the release notes for details.'
+          releaseBody: |
+            ## SceneBrowser ${{ github.ref_name }}
+
+            ### Downloads
+            Choose the appropriate DMG for your Mac:
+            - **Universal (Apple Silicon + Intel)**: Works on all Macs
+            - **Apple Silicon**: M1/M2/M3/M4 Macs
+            - **Intel**: Intel-based Macs
+
+            ### Installation
+            1. Download the DMG file
+            2. Open the DMG file
+            3. Drag SceneBrowser to Applications folder
+            4. If you see a security warning, run: `xattr -cr /Applications/SceneBrowser.app`
+
+            ### Requirements
+            - macOS 11.0 (Big Sur) or later
+            - FFmpeg (install via `brew install ffmpeg`)
+
+            ### Changes
+            See [CHANGELOG.md](https://github.com/nackon/SceneBrowser/blob/main/CHANGELOG.md) for details.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.target != 'universal-apple-darwin' && format('--target {0}', matrix.target) || '' }}
-
-      - name: Generate checksums
-        run: |
-          cd src-tauri/target/release/bundle/dmg
-          for file in *.dmg; do
-            shasum -a 256 "$file" > "$file.sha256"
-          done
-
-      - name: Upload DMG artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/dmg/SceneBrowser_${{ needs.create-release.outputs.version }}_${{ matrix.target }}.dmg
-          asset_name: SceneBrowser_${{ needs.create-release.outputs.version }}_${{ matrix.target }}.dmg
-          asset_content_type: application/x-apple-diskimage
-
-      - name: Upload checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/dmg/SceneBrowser_${{ needs.create-release.outputs.version }}_${{ matrix.target }}.dmg.sha256
-          asset_name: SceneBrowser_${{ needs.create-release.outputs.version }}_${{ matrix.target }}.dmg.sha256
-          asset_content_type: text/plain
