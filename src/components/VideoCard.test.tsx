@@ -242,4 +242,44 @@ describe('VideoCard', () => {
       expect(invokeMock).not.toHaveBeenCalledWith('open_video_with_player', expect.any(Object));
     });
   });
+
+  describe('Thumbnail loading race (issue #66)', () => {
+    it('does not let a stale thumbnail read overwrite a recycled card after the video prop changes', async () => {
+      // Simulates a virtualized-grid cell being recycled from one video to another
+      // while the first video's thumbnail read is still in flight.
+      const { readThumbnail } = await import('../services/commands');
+      const readThumbnailMock = vi.mocked(readThumbnail);
+
+      let resolveFirst: (value: string) => void;
+      const firstThumbnailPromise = new Promise<string>((resolve) => {
+        resolveFirst = resolve;
+      });
+
+      const videoA = { ...mockVideo, id: 1, thumbnail_path: '/thumb-a.jpg' };
+      const videoB = { ...mockVideo, id: 2, thumbnail_path: '/thumb-b.jpg' };
+
+      readThumbnailMock.mockImplementation((path: string) => {
+        if (path === '/thumb-a.jpg') return firstThumbnailPromise;
+        if (path === '/thumb-b.jpg') return Promise.resolve('data:image/jpeg;base64,B');
+        return Promise.resolve('data:image/jpeg;base64,unexpected');
+      });
+
+      const { rerender } = render(<VideoCard video={videoA} folderId={1} />);
+
+      // Recycle the same component instance to a different video before A's read resolves.
+      rerender(<VideoCard video={videoB} folderId={1} />);
+
+      await waitFor(() => {
+        const img = document.querySelector('img.thumbnail') as HTMLImageElement | null;
+        expect(img?.src).toContain('data:image/jpeg;base64,B');
+      });
+
+      // Now let the stale read for the recycled-away video resolve.
+      resolveFirst!('data:image/jpeg;base64,A');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const img = document.querySelector('img.thumbnail') as HTMLImageElement | null;
+      expect(img?.src).toContain('data:image/jpeg;base64,B');
+    });
+  });
 });

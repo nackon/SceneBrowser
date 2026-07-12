@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { readThumbnail, regenerateThumbnail, toggleFavorite } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
@@ -19,44 +19,65 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
   const [error, setError] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [isFavorite, setIsFavorite] = useState(video.is_favorite === 1);
+  // The grid virtualizer recycles VideoCard instances across different videos as it
+  // scrolls/filters, so an in-flight thumbnail read for a previous video must not be
+  // allowed to overwrite state after this instance has been reassigned to a new one.
+  const videoIdRef = useRef(video.id);
+  videoIdRef.current = video.id;
 
   useEffect(() => {
-    if (video.thumbnail_path) {
-      // Read thumbnail as base64 data URL
-      loadThumbnail(video.thumbnail_path);
-    }
-  }, [video.id, video.thumbnail_path]);
+    let cancelled = false;
 
-  async function loadThumbnail(thumbnailPath: string) {
-    setLoading(true);
-    setError(false);
-    try {
-      const dataUrl = await readThumbnail(thumbnailPath);
-      setThumbnailUrl(dataUrl);
-    } catch (err) {
-      console.error('Failed to load thumbnail:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
+    async function load(thumbnailPath: string) {
+      setLoading(true);
+      setError(false);
+      try {
+        const dataUrl = await readThumbnail(thumbnailPath);
+        if (!cancelled) setThumbnailUrl(dataUrl);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load thumbnail:', err);
+          setError(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }
+
+    if (video.thumbnail_path) {
+      load(video.thumbnail_path);
+    } else {
+      setThumbnailUrl(null);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [video.id, video.thumbnail_path]);
 
   async function handleRegenerateThumbnail(e: React.MouseEvent) {
     e.stopPropagation();
+    const videoId = video.id;
     setRegenerating(true);
     setError(false);
     try {
-      const thumbnailPath = await regenerateThumbnail(video.id);
+      const thumbnailPath = await regenerateThumbnail(videoId);
       const dataUrl = await readThumbnail(thumbnailPath);
-      setThumbnailUrl(dataUrl);
+      if (videoIdRef.current === videoId) {
+        setThumbnailUrl(dataUrl);
+      }
       if (onThumbnailRegenerated) {
         onThumbnailRegenerated();
       }
     } catch (err) {
       console.error('Failed to regenerate thumbnail:', err);
-      setError(true);
+      if (videoIdRef.current === videoId) {
+        setError(true);
+      }
     } finally {
-      setRegenerating(false);
+      if (videoIdRef.current === videoId) {
+        setRegenerating(false);
+      }
     }
   }
 
