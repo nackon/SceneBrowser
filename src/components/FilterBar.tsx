@@ -1,12 +1,19 @@
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import './FilterBar.css';
 
 export type FilterMode = 'all' | 'favorites';
+export type SortField = 'filename' | 'date';
+export type SortDirection = 'asc' | 'desc';
 
 interface FilterBarProps {
   filterMode: FilterMode;
   onFilterModeChange: (mode: FilterMode) => void;
   favoriteCount: number;
   totalCount: number;
+  sortField: SortField;
+  onSortFieldChange: (field: SortField) => void;
+  sortDirection: SortDirection;
+  onSortDirectionToggle: () => void;
 }
 
 export function FilterBar({
@@ -14,6 +21,10 @@ export function FilterBar({
   onFilterModeChange,
   favoriteCount,
   totalCount,
+  sortField,
+  onSortFieldChange,
+  sortDirection,
+  onSortDirectionToggle,
 }: FilterBarProps) {
   return (
     <div className="filter-bar">
@@ -33,6 +44,25 @@ export function FilterBar({
           <span className="filter-icon">★</span>
           <span className="filter-label">Favorites</span>
           <span className="filter-count">{favoriteCount}</span>
+        </button>
+      </div>
+      <div className="sort-controls">
+        <select
+          className="sort-select"
+          value={sortField}
+          onChange={(e) => onSortFieldChange(e.target.value as SortField)}
+          aria-label="Sort by"
+        >
+          <option value="filename">ファイル名</option>
+          <option value="date">日時</option>
+        </select>
+        <button
+          className="sort-direction-button"
+          onClick={onSortDirectionToggle}
+          title={sortDirection === 'asc' ? '昇順' : '降順'}
+          aria-label={sortDirection === 'asc' ? '昇順' : '降順'}
+        >
+          {sortDirection === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
         </button>
       </div>
     </div>
