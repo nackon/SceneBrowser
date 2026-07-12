@@ -13,6 +13,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -29,6 +31,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -48,6 +52,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -67,6 +73,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -87,6 +95,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -106,6 +116,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -124,6 +136,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={5}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -143,6 +157,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={0}
         totalCount={20}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -159,6 +175,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={0}
         totalCount={0}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -175,6 +193,8 @@ describe('FilterBar', () => {
         onFilterModeChange={onFilterModeChange}
         favoriteCount={10}
         totalCount={10}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
       />
     );
 
@@ -183,5 +203,89 @@ describe('FilterBar', () => {
 
     expect(allButton?.textContent).toContain('10');
     expect(favoritesButton?.textContent).toContain('10');
+  });
+
+  describe('search box', () => {
+    it('renders the search input with the current query', () => {
+      const onFilterModeChange = vi.fn();
+      const onSearchQueryChange = vi.fn();
+
+      render(
+        <FilterBar
+          filterMode="all"
+          onFilterModeChange={onFilterModeChange}
+          favoriteCount={5}
+          totalCount={20}
+          searchQuery="beach"
+          onSearchQueryChange={onSearchQueryChange}
+        />
+      );
+
+      expect(screen.getByPlaceholderText('Search by filename...')).toHaveValue('beach');
+    });
+
+    it('calls onSearchQueryChange incrementally as the user types', async () => {
+      const user = userEvent.setup();
+      const onFilterModeChange = vi.fn();
+      const onSearchQueryChange = vi.fn();
+
+      render(
+        <FilterBar
+          filterMode="all"
+          onFilterModeChange={onFilterModeChange}
+          favoriteCount={5}
+          totalCount={20}
+          searchQuery=""
+          onSearchQueryChange={onSearchQueryChange}
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Search by filename...');
+      await user.type(input, 'cat');
+
+      expect(onSearchQueryChange).toHaveBeenCalledTimes(3);
+      expect(onSearchQueryChange).toHaveBeenNthCalledWith(1, 'c');
+      expect(onSearchQueryChange).toHaveBeenNthCalledWith(2, 'a');
+      expect(onSearchQueryChange).toHaveBeenNthCalledWith(3, 't');
+    });
+
+    it('does not render a clear button when the query is empty', () => {
+      const onFilterModeChange = vi.fn();
+      const onSearchQueryChange = vi.fn();
+
+      render(
+        <FilterBar
+          filterMode="all"
+          onFilterModeChange={onFilterModeChange}
+          favoriteCount={5}
+          totalCount={20}
+          searchQuery=""
+          onSearchQueryChange={onSearchQueryChange}
+        />
+      );
+
+      expect(screen.queryByLabelText('Clear search')).not.toBeInTheDocument();
+    });
+
+    it('clears the query when the clear button is clicked', async () => {
+      const user = userEvent.setup();
+      const onFilterModeChange = vi.fn();
+      const onSearchQueryChange = vi.fn();
+
+      render(
+        <FilterBar
+          filterMode="all"
+          onFilterModeChange={onFilterModeChange}
+          favoriteCount={5}
+          totalCount={20}
+          searchQuery="beach"
+          onSearchQueryChange={onSearchQueryChange}
+        />
+      );
+
+      await user.click(screen.getByLabelText('Clear search'));
+
+      expect(onSearchQueryChange).toHaveBeenCalledWith('');
+    });
   });
 });

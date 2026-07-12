@@ -11,7 +11,7 @@ import './App.css';
 type View = 'videos' | 'settings';
 
 function App() {
-  const { videos, selectedFolder, isLoading, error } = useVideoStore();
+  const { videos, selectedFolder, isLoading, error, searchQuery, setSearchQuery } = useVideoStore();
   const [ffmpegError, setFFmpegError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('videos');
   const [filterMode, setFilterMode] = useState<FilterMode>(() => {
@@ -56,10 +56,10 @@ function App() {
     }
   };
 
-  // Filter videos based on filter mode
-  const filteredVideos = filterMode === 'favorites'
-    ? videos.filter(v => v.is_favorite === 1)
-    : videos;
+  // Filter videos based on filter mode and search query
+  const filteredVideos = videos
+    .filter(v => filterMode !== 'favorites' || v.is_favorite === 1)
+    .filter(v => v.filename.toLowerCase().includes(searchQuery.trim().toLowerCase()));
 
   return (
     <div className="app">
@@ -88,6 +88,8 @@ function App() {
                 onFilterModeChange={handleFilterModeChange}
                 favoriteCount={favoriteCount}
                 totalCount={videos.length}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
               />
             )}
             {ffmpegError && (
@@ -124,8 +126,17 @@ function App() {
               </div>
             ) : filteredVideos.length === 0 ? (
               <div className="empty-state">
-                <p>No favorite videos</p>
-                <p className="hint">Click the ★ button on videos to add them to favorites</p>
+                {searchQuery.trim() ? (
+                  <>
+                    <p>No videos match "{searchQuery}"</p>
+                    <p className="hint">Try a different search term</p>
+                  </>
+                ) : (
+                  <>
+                    <p>No favorite videos</p>
+                    <p className="hint">Click the ★ button on videos to add them to favorites</p>
+                  </>
+                )}
               </div>
             ) : (
               <VideoGrid
