@@ -5,6 +5,9 @@ export type FilterMode = 'all' | 'favorites';
 export type SortField = 'filename' | 'date';
 export type SortDirection = 'asc' | 'desc';
 
+const isSortField = (value: string): value is SortField =>
+  value === 'filename' || value === 'date';
+
 interface FilterBarProps {
   filterMode: FilterMode;
   onFilterModeChange: (mode: FilterMode) => void;
@@ -50,7 +53,11 @@ export function FilterBar({
         <select
           className="sort-select"
           value={sortField}
-          onChange={(e) => onSortFieldChange(e.target.value as SortField)}
+          onChange={(e) => {
+            if (isSortField(e.target.value)) {
+              onSortFieldChange(e.target.value);
+            }
+          }}
           aria-label="Sort by"
         >
           <option value="filename">ファイル名</option>

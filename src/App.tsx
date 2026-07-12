@@ -10,6 +10,12 @@ import './App.css';
 
 type View = 'videos' | 'settings';
 
+const isSortField = (value: string | null): value is SortField =>
+  value === 'filename' || value === 'date';
+
+const isSortDirection = (value: string | null): value is SortDirection =>
+  value === 'asc' || value === 'desc';
+
 function App() {
   const { videos, selectedFolder, isLoading, error } = useVideoStore();
   const [ffmpegError, setFFmpegError] = useState<string | null>(null);
@@ -21,11 +27,11 @@ function App() {
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [sortField, setSortField] = useState<SortField>(() => {
     const saved = localStorage.getItem('video_sort_field');
-    return (saved as SortField) || 'filename';
+    return isSortField(saved) ? saved : 'filename';
   });
   const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
     const saved = localStorage.getItem('video_sort_direction');
-    return (saved as SortDirection) || 'asc';
+    return isSortDirection(saved) ? saved : 'asc';
   });
 
   // Check FFmpeg availability on startup
@@ -77,21 +83,28 @@ function App() {
     }
   };
 
-  // Filter videos based on filter mode
-  const filteredVideos = filterMode === 'favorites'
-    ? videos.filter(v => v.is_favorite === 1)
-    : videos;
-
-  // Sort filtered videos by the selected field/direction
+  // Filter by filter mode, then sort by the selected field/direction.
+  // Combined into one memo (rather than a `filteredVideos` intermediate) so the
+  // sort only recomputes when its actual inputs change, not on every render.
   const sortedVideos = useMemo(() => {
-    const sorted = [...filteredVideos].sort((a, b) => {
-      const comparison = sortField === 'filename'
-        ? a.filename.localeCompare(b.filename)
-        : new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-    return sorted;
-  }, [filteredVideos, sortField, sortDirection]);
+    const filtered = filterMode === 'favorites'
+      ? videos.filter((v) => v.is_favorite === 1)
+      : videos;
+
+    const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
+
+    if (sortField === 'filename') {
+      return [...filtered].sort(
+        (a, b) => a.filename.localeCompare(b.filename) * directionMultiplier
+      );
+    }
+
+    // Precompute each timestamp once instead of re-parsing per comparison.
+    return filtered
+      .map((video) => ({ video, timestamp: new Date(video.created_at).getTime() }))
+      .sort((a, b) => (a.timestamp - b.timestamp) * directionMultiplier)
+      .map((entry) => entry.video);
+  }, [videos, filterMode, sortField, sortDirection]);
 
   return (
     <div className="app">
