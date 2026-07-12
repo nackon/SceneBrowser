@@ -133,25 +133,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build Tauri app (debug mode)
-        run: npm run tauri build -- --debug
-
-      - name: Verify debug build artifacts
-        run: |
-          ls -la src-tauri/target/debug/bundle/macos/
-          if [ ! -d "src-tauri/target/debug/bundle/macos/SceneBrowser.app" ]; then
-            echo "App bundle not found!"
-            exit 1
-          fi
-
-      - name: Ad-hoc sign the debug app bundle
-        run: |
-          # Ad-hoc signing for development builds
-          codesign --force --deep --sign - src-tauri/target/debug/bundle/macos/SceneBrowser.app
-
-          # Verify signature
-          codesign -dv --verbose=4 src-tauri/target/debug/bundle/macos/SceneBrowser.app
-
       - name: Build Tauri app (release mode)
         run: npm run tauri build
 
