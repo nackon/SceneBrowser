@@ -25,6 +25,13 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
   const videoIdRef = useRef(video.id);
   videoIdRef.current = video.id;
 
+  // Reset per-video, non-thumbnail state whenever a recycled card is reassigned
+  // to a different video, so stale flags/values from the previous video can't leak in.
+  useEffect(() => {
+    setIsFavorite(video.is_favorite === 1);
+    setRegenerating(false);
+  }, [video.id]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -48,6 +55,8 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
       load(video.thumbnail_path);
     } else {
       setThumbnailUrl(null);
+      setLoading(false);
+      setError(false);
     }
 
     return () => {

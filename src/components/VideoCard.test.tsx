@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { invoke } from '@tauri-apps/api/core';
 import { VideoCard } from './VideoCard';
@@ -274,9 +274,12 @@ describe('VideoCard', () => {
         expect(img?.src).toContain('data:image/jpeg;base64,B');
       });
 
-      // Now let the stale read for the recycled-away video resolve.
-      resolveFirst!('data:image/jpeg;base64,A');
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Now let the stale read for the recycled-away video resolve, and flush its
+      // continuation (the cancelled-check inside the effect) deterministically.
+      await act(async () => {
+        resolveFirst!('data:image/jpeg;base64,A');
+        await firstThumbnailPromise;
+      });
 
       const img = document.querySelector('img.thumbnail') as HTMLImageElement | null;
       expect(img?.src).toContain('data:image/jpeg;base64,B');
