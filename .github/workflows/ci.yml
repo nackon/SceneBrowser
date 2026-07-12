@@ -13,6 +13,9 @@ jobs:
   rust-test:
     name: Rust Tests
     runs-on: ubuntu-latest
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - name: Checkout code
@@ -44,6 +47,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
@@ -97,6 +103,9 @@ jobs:
     name: Integration Check
     runs-on: macos-latest
     needs: [rust-test, frontend-build]
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - name: Checkout code
@@ -104,6 +113,9 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
