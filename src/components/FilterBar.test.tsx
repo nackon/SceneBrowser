@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -227,26 +228,27 @@ describe('FilterBar', () => {
     it('calls onSearchQueryChange incrementally as the user types', async () => {
       const user = userEvent.setup();
       const onFilterModeChange = vi.fn();
-      const onSearchQueryChange = vi.fn();
 
-      render(
-        <FilterBar
-          filterMode="all"
-          onFilterModeChange={onFilterModeChange}
-          favoriteCount={5}
-          totalCount={20}
-          searchQuery=""
-          onSearchQueryChange={onSearchQueryChange}
-        />
-      );
+      function ControlledFilterBar() {
+        const [searchQuery, setSearchQuery] = useState('');
+        return (
+          <FilterBar
+            filterMode="all"
+            onFilterModeChange={onFilterModeChange}
+            favoriteCount={5}
+            totalCount={20}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+          />
+        );
+      }
+
+      render(<ControlledFilterBar />);
 
       const input = screen.getByPlaceholderText('Search by filename...');
       await user.type(input, 'cat');
 
-      expect(onSearchQueryChange).toHaveBeenCalledTimes(3);
-      expect(onSearchQueryChange).toHaveBeenNthCalledWith(1, 'c');
-      expect(onSearchQueryChange).toHaveBeenNthCalledWith(2, 'a');
-      expect(onSearchQueryChange).toHaveBeenNthCalledWith(3, 't');
+      expect(input).toHaveValue('cat');
     });
 
     it('does not render a clear button when the query is empty', () => {

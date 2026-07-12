@@ -51,6 +51,7 @@ export function FilterBar({
         />
         {searchQuery && (
           <button
+            type="button"
             className="search-clear"
             onClick={() => onSearchQueryChange('')}
             aria-label="Clear search"

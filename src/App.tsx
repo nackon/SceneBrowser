@@ -57,9 +57,10 @@ function App() {
   };
 
   // Filter videos based on filter mode and search query
+  const trimmedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredVideos = videos
     .filter(v => filterMode !== 'favorites' || v.is_favorite === 1)
-    .filter(v => v.filename.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+    .filter(v => !trimmedSearchQuery || v.filename.toLowerCase().includes(trimmedSearchQuery));
 
   return (
     <div className="app">
@@ -126,9 +127,9 @@ function App() {
               </div>
             ) : filteredVideos.length === 0 ? (
               <div className="empty-state">
-                {searchQuery.trim() ? (
+                {trimmedSearchQuery ? (
                   <>
-                    <p>No videos match "{searchQuery}"</p>
+                    <p>No videos match "{trimmedSearchQuery}"</p>
                     <p className="hint">Try a different search term</p>
                   </>
                 ) : (
