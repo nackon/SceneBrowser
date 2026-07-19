@@ -17,7 +17,7 @@ const isSortDirection = (value: string | null): value is SortDirection =>
   value === 'asc' || value === 'desc';
 
 function App() {
-  const { videos, selectedFolder, isLoading, error } = useVideoStore();
+  const { videos, selectedFolder, isLoading, error, searchQuery, setSearchQuery } = useVideoStore();
   const [ffmpegError, setFFmpegError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('videos');
   const [filterMode, setFilterMode] = useState<FilterMode>(() => {
@@ -83,13 +83,14 @@ function App() {
     }
   };
 
-  // Filter by filter mode, then sort by the selected field/direction.
+  // Filter by filter mode and search query, then sort by the selected field/direction.
   // Combined into one memo (rather than a `filteredVideos` intermediate) so the
   // sort only recomputes when its actual inputs change, not on every render.
+  const trimmedSearchQuery = searchQuery.trim().toLowerCase();
   const sortedVideos = useMemo(() => {
-    const filtered = filterMode === 'favorites'
-      ? videos.filter((v) => v.is_favorite === 1)
-      : videos;
+    const filtered = videos
+      .filter((v) => filterMode !== 'favorites' || v.is_favorite === 1)
+      .filter((v) => !trimmedSearchQuery || v.filename.toLowerCase().includes(trimmedSearchQuery));
 
     const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
 
@@ -104,7 +105,7 @@ function App() {
       .map((video) => ({ video, timestamp: new Date(video.created_at).getTime() }))
       .sort((a, b) => (a.timestamp - b.timestamp) * directionMultiplier)
       .map((entry) => entry.video);
-  }, [videos, filterMode, sortField, sortDirection]);
+  }, [videos, filterMode, trimmedSearchQuery, sortField, sortDirection]);
 
   return (
     <div className="app">
@@ -133,6 +134,8 @@ function App() {
                 onFilterModeChange={handleFilterModeChange}
                 favoriteCount={favoriteCount}
                 totalCount={videos.length}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
                 sortField={sortField}
                 onSortFieldChange={handleSortFieldChange}
                 sortDirection={sortDirection}
@@ -173,8 +176,17 @@ function App() {
               </div>
             ) : sortedVideos.length === 0 ? (
               <div className="empty-state">
-                <p>No favorite videos</p>
-                <p className="hint">Click the ★ button on videos to add them to favorites</p>
+                {trimmedSearchQuery ? (
+                  <>
+                    <p>No videos match "{trimmedSearchQuery}"</p>
+                    <p className="hint">Try a different search term</p>
+                  </>
+                ) : (
+                  <>
+                    <p>No favorite videos</p>
+                    <p className="hint">Click the ★ button on videos to add them to favorites</p>
+                  </>
+                )}
               </div>
             ) : (
               <VideoGrid

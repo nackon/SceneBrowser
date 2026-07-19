@@ -13,6 +13,8 @@ interface FilterBarProps {
   onFilterModeChange: (mode: FilterMode) => void;
   favoriteCount: number;
   totalCount: number;
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
   sortField: SortField;
   onSortFieldChange: (field: SortField) => void;
   sortDirection: SortDirection;
@@ -24,6 +26,8 @@ export function FilterBar({
   onFilterModeChange,
   favoriteCount,
   totalCount,
+  searchQuery,
+  onSearchQueryChange,
   sortField,
   onSortFieldChange,
   sortDirection,
@@ -48,6 +52,27 @@ export function FilterBar({
           <span className="filter-label">Favorites</span>
           <span className="filter-count">{favoriteCount}</span>
         </button>
+      </div>
+      <div className="search-box">
+        <span className="search-icon">🔍</span>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search by filename..."
+          value={searchQuery}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
+          aria-label="Search by filename"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            className="search-clear"
+            onClick={() => onSearchQueryChange('')}
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
       </div>
       <div className="sort-controls">
         <select
