@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { invoke } from '@tauri-apps/api/core';
 import { VideoCard } from './VideoCard';
@@ -283,6 +283,91 @@ describe('VideoCard', () => {
 
       const img = document.querySelector('img.thumbnail') as HTMLImageElement | null;
       expect(img?.src).toContain('data:image/jpeg;base64,B');
+    });
+  });
+
+  describe('Context menu (issue #74)', () => {
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      });
+    });
+
+    it('shows only a Copy Path item on right-click, replacing the native menu', () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      const menu = document.querySelector('.context-menu');
+      expect(menu).toBeInTheDocument();
+      const items = menu!.querySelectorAll('.context-menu-item');
+      expect(items).toHaveLength(1);
+      expect(items[0].textContent).toBe('Copy Path');
+    });
+
+    it('copies the full video path and closes the menu when Copy Path is clicked', async () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      const copyItem = screen.getByText('Copy Path');
+      fireEvent.click(copyItem);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('/test/video.mp4');
+      await waitFor(() => {
+        expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the menu on outside click without opening the video', async () => {
+      const user = userEvent.setup();
+      const invokeMock = vi.mocked(invoke);
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      await user.click(document.body);
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+      expect(invokeMock).not.toHaveBeenCalledWith('open_video_with_player', expect.any(Object));
+    });
+
+    it('closes the menu on Escape', () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
     });
   });
 });
