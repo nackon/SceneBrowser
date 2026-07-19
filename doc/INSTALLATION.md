@@ -1,120 +1,120 @@
-# SceneBrowser インストールガイド
+# SceneBrowser Installation Guide
 
-## 安定版リリースのインストール
+## Installing the Stable Release
 
-1. [GitHub Releases](https://github.com/nackon/SceneBrowser/releases/latest) から最新版をダウンロード
-2. DMGファイルを開く
-3. SceneBrowser.appをApplicationsフォルダにドラッグ
-4. アプリを起動
+1. Download the latest version from [GitHub Releases](https://github.com/nackon/SceneBrowser/releases/latest)
+2. Open the DMG file
+3. Drag SceneBrowser.app to the Applications folder
+4. Launch the app
 
-安定版は公式に署名されているため、Gatekeeperの警告は表示されません。
+The stable release is officially signed, so no Gatekeeper warning will appear.
 
-## 開発ビルドのインストール
+## Installing a Development Build
 
-開発ビルドはad-hoc署名されているため、追加の手順が必要です。
+Development builds are ad-hoc signed, so some extra steps are required.
 
-### 方法1: 右クリックから開く（推奨）
+### Method 1: Open via right-click (Recommended)
 
-1. DMGをマウントし、SceneBrowser.appをApplicationsにコピー
-2. Finderで `/Applications/SceneBrowser.app` を探す
-3. **右クリック** → **開く** を選択
-4. 「開発元を確認できません」の警告が表示されたら **開く** をクリック
-5. 以降は通常通りダブルクリックで起動可能
+1. Mount the DMG and copy SceneBrowser.app to Applications
+2. Locate `/Applications/SceneBrowser.app` in Finder
+3. **Right-click** it and select **Open**
+4. When the "developer cannot be verified" warning appears, click **Open**
+5. After this, you can launch it normally by double-clicking
 
-### 方法2: ターミナルから quarantine 属性を削除
+### Method 2: Remove the quarantine attribute via Terminal
 
 ```bash
-# アプリをApplicationsにコピー後
+# After copying the app to Applications
 xattr -cr /Applications/SceneBrowser.app
 
-# または、DMGファイル自体の属性を削除してからインストール
+# Or remove the attribute from the DMG file itself before installing
 xattr -cr ~/Downloads/SceneBrowser-dev.dmg
 ```
 
-### 方法3: システム設定から許可（macOS Ventura以降）
+### Method 3: Allow via System Settings (macOS Ventura and later)
 
-1. アプリを開こうとして警告が出る
-2. システム設定 → プライバシーとセキュリティ を開く
-3. 「"SceneBrowser"は開発元を確認できないため、使用がブロックされました」の横の **このまま開く** をクリック
+1. Try to open the app; a warning appears
+2. Open System Settings → Privacy & Security
+3. Click **Open Anyway** next to "'SceneBrowser' was blocked because it is from an unidentified developer"
 
-## トラブルシューティング
+## Troubleshooting
 
-### 「マルウェアが含まれていないことを検証できませんでした」エラー
+### "Apple could not verify... is free of malware" error
 
-これはmacOSのGatekeeperによる警告で、開発ビルドがAppleの公証（Notarization）を受けていないために表示されます。**アプリは安全です。**
+This is a macOS Gatekeeper warning shown because the development build is not notarized by Apple. **The app is safe.**
 
-**解決方法1: ターミナルコマンド（最も確実）:**
+**Solution 1: Terminal command (most reliable):**
 
 ```bash
-# アプリをApplicationsにコピー後、ターミナルで実行
+# After copying the app to Applications, run this in Terminal
 xattr -cr /Applications/SceneBrowser.app
 
-# その後、Finderでダブルクリックして起動
+# Then double-click to launch it in Finder
 ```
 
-**解決方法2: 右クリックから開く:**
+**Solution 2: Open via right-click:**
 
-1. Finderで `/Applications/SceneBrowser.app` を探す
-2. **右クリック** → **開く** を選択
-3. 警告ダイアログで **開く** をクリック
+1. Locate `/Applications/SceneBrowser.app` in Finder
+2. **Right-click** it and select **Open**
+3. Click **Open** in the warning dialog
 
-**解決方法3: システム設定から許可（macOS Ventura以降）:**
+**Solution 3: Allow via System Settings (macOS Ventura and later):**
 
-1. アプリを開こうとして警告が出る
-2. システム設定 → プライバシーとセキュリティ を開く
-3. **このまま開く** をクリック
+1. Try to open the app; a warning appears
+2. Open System Settings → Privacy & Security
+3. Click **Open Anyway**
 
-### 「SceneBrowserは壊れているため開けません」エラー
+### "SceneBrowser is damaged and can't be opened" error
 
-これもGatekeeperによるもので、アプリが壊れているわけではありません。
+This is also caused by Gatekeeper — the app is not actually damaged.
 
-**解決方法:**
+**Solution:**
 
 ```bash
-# quarantine属性を削除
+# Remove the quarantine attribute
 xattr -cr /Applications/SceneBrowser.app
 
-# または、すべての拡張属性を確認
+# Or list all extended attributes
 xattr -l /Applications/SceneBrowser.app
 
-# 特定の属性だけ削除
+# Or remove just the quarantine attribute
 xattr -d com.apple.quarantine /Applications/SceneBrowser.app
 ```
 
-### 「開発元が未確認のため開けません」エラー
+### "Cannot be opened because the developer cannot be verified" error
 
-開発ビルドは個人の開発者証明書で署名されていないため、この警告が出ます。
+This warning appears because development builds are not signed with a personal developer certificate.
 
-**解決方法:**
-1. 右クリック → 開く（初回のみ）
-2. または上記の `xattr` コマンドを使用
+**Solution:**
+1. Right-click → Open (first time only)
+2. Or use the `xattr` command above
 
-### DMGがマウントできない
+### DMG won't mount
 
 ```bash
-# DMGファイルの quarantine 属性を削除
+# Remove the quarantine attribute from the DMG file
 xattr -cr ~/Downloads/SceneBrowser-dev.dmg
 
-# その後、DMGをダブルクリック
+# Then double-click the DMG
 ```
 
-## セキュリティについて
+## About Security
 
-開発ビルドはad-hoc署名（`-`署名）されています。これは：
-- Apple Developer IDで署名されていない
-- Notarization（公証）されていない
-- 開発・テスト目的のビルド
+Development builds are ad-hoc signed (signed with `-`). This means:
+- Not signed with an Apple Developer ID
+- Not notarized
+- Intended for development/testing purposes
 
-**本番環境では安定版リリースの使用を推奨します。**
+**Using the stable release is recommended for production use.**
 
-安定版リリース（git tagからビルド）は将来的に正式な署名を追加する予定です。
+Official signing is planned to be added to stable releases (built from git tags) in the future.
 
-## FFmpegのインストール
+## Installing FFmpeg
 
-SceneBrowserはFFmpegが必要です：
+SceneBrowser requires FFmpeg:
 
 ```bash
 brew install ffmpeg
 ```
 
-FFmpegがインストールされていない場合、アプリ起動時にエラーが表示されます。
+If FFmpeg is not installed, an error will be shown when the app starts.

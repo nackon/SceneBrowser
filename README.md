@@ -5,6 +5,13 @@
 
 A macOS video collection management application with multiple thumbnail preview.
 
+> ⚠️ **Alpha Version**: This software is in early development stage and may contain bugs or unexpected behavior. Please backup your important files and report any issues to [GitHub Issues](https://github.com/nackon/SceneBrowser/issues).
+
+> ⚠️ **重要**: アプリが「破損している」等の理由で開けない場合は、ターミナルで以下を実行してください。
+> ```bash
+> xattr -cr /Applications/SceneBrowser.app
+> ```
+
 ## Download
 
 ### Stable Release
