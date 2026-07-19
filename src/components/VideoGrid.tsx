@@ -62,7 +62,9 @@ function Cell({ columnIndex, rowIndex, style, videos, columnCount, selectedFolde
 
   return (
     <div style={{ ...style, padding: `${GUTTER / 2}px` }}>
-      <VideoCard video={video} folderId={selectedFolder} onFavoriteToggled={onFavoriteToggled} />
+      {/* key forces a remount when the video at this recycled cell position changes,
+          preventing stale favorite/thumbnail state from leaking across videos. */}
+      <VideoCard key={video.id} video={video} folderId={selectedFolder} onFavoriteToggled={onFavoriteToggled} />
     </div>
   );
 }

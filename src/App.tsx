@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { VideoGrid } from './components/VideoGrid';
 import { Settings } from './components/Settings';
-import { FilterBar, type FilterMode } from './components/FilterBar';
+import { FilterBar, type FilterMode, type SortField, type SortDirection } from './components/FilterBar';
 import { useVideoStore } from './store/videoStore';
 import { useVideos } from './hooks/useVideos';
 import { checkFFmpeg, getFavoriteCount } from './services/commands';
 import './App.css';
 
 type View = 'videos' | 'settings';
+
+const isSortField = (value: string | null): value is SortField =>
+  value === 'filename' || value === 'date';
+
+const isSortDirection = (value: string | null): value is SortDirection =>
+  value === 'asc' || value === 'desc';
 
 function App() {
   const { videos, selectedFolder, isLoading, error, searchQuery, setSearchQuery } = useVideoStore();
@@ -19,6 +25,14 @@ function App() {
     return (saved as FilterMode) || 'all';
   });
   const [favoriteCount, setFavoriteCount] = useState(0);
+  const [sortField, setSortField] = useState<SortField>(() => {
+    const saved = localStorage.getItem('video_sort_field');
+    return isSortField(saved) ? saved : 'filename';
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    const saved = localStorage.getItem('video_sort_direction');
+    return isSortDirection(saved) ? saved : 'asc';
+  });
 
   // Check FFmpeg availability on startup
   useEffect(() => {
@@ -47,6 +61,19 @@ function App() {
     localStorage.setItem('video_filter_mode', mode);
   };
 
+  // Save sort field to localStorage
+  const handleSortFieldChange = (field: SortField) => {
+    setSortField(field);
+    localStorage.setItem('video_sort_field', field);
+  };
+
+  // Toggle and save sort direction to localStorage
+  const handleSortDirectionToggle = () => {
+    const next = sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortDirection(next);
+    localStorage.setItem('video_sort_direction', next);
+  };
+
   // Update favorite count when a video's favorite status changes
   const handleFavoriteToggled = () => {
     if (selectedFolder !== null) {
@@ -56,11 +83,29 @@ function App() {
     }
   };
 
-  // Filter videos based on filter mode and search query
+  // Filter by filter mode and search query, then sort by the selected field/direction.
+  // Combined into one memo (rather than a `filteredVideos` intermediate) so the
+  // sort only recomputes when its actual inputs change, not on every render.
   const trimmedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredVideos = videos
-    .filter(v => filterMode !== 'favorites' || v.is_favorite === 1)
-    .filter(v => !trimmedSearchQuery || v.filename.toLowerCase().includes(trimmedSearchQuery));
+  const sortedVideos = useMemo(() => {
+    const filtered = videos
+      .filter((v) => filterMode !== 'favorites' || v.is_favorite === 1)
+      .filter((v) => !trimmedSearchQuery || v.filename.toLowerCase().includes(trimmedSearchQuery));
+
+    const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
+
+    if (sortField === 'filename') {
+      return [...filtered].sort(
+        (a, b) => a.filename.localeCompare(b.filename) * directionMultiplier
+      );
+    }
+
+    // Precompute each timestamp once instead of re-parsing per comparison.
+    return filtered
+      .map((video) => ({ video, timestamp: new Date(video.created_at).getTime() }))
+      .sort((a, b) => (a.timestamp - b.timestamp) * directionMultiplier)
+      .map((entry) => entry.video);
+  }, [videos, filterMode, trimmedSearchQuery, sortField, sortDirection]);
 
   return (
     <div className="app">
@@ -91,6 +136,10 @@ function App() {
                 totalCount={videos.length}
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
+                sortField={sortField}
+                onSortFieldChange={handleSortFieldChange}
+                sortDirection={sortDirection}
+                onSortDirectionToggle={handleSortDirectionToggle}
               />
             )}
             {ffmpegError && (
@@ -125,7 +174,7 @@ function App() {
                 <p>No videos found</p>
                 <p className="hint">Add a folder and scan to get started</p>
               </div>
-            ) : filteredVideos.length === 0 ? (
+            ) : sortedVideos.length === 0 ? (
               <div className="empty-state">
                 {trimmedSearchQuery ? (
                   <>
@@ -141,7 +190,7 @@ function App() {
               </div>
             ) : (
               <VideoGrid
-                videos={filteredVideos}
+                videos={sortedVideos}
                 selectedFolder={selectedFolder}
                 onFavoriteToggled={handleFavoriteToggled}
               />
