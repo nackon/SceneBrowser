@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { readThumbnail, regenerateThumbnail, toggleFavorite } from '../services/commands';
 import { useVideoStore } from '../store/videoStore';
@@ -30,13 +31,42 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
   videoIdRef.current = video.id;
   const folderIdRef = useRef(folderId);
   folderIdRef.current = folderId;
+  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Reset per-video, non-thumbnail state whenever a recycled card is reassigned
   // to a different video, so stale flags/values from the previous video can't leak in.
   useEffect(() => {
     setIsFavorite(video.is_favorite === 1);
     setRegenerating(false);
-  }, [video.id]);
+    setContextMenuPos(null);
+  }, [video.id, folderId]);
+
+  useEffect(() => {
+    if (!contextMenuPos) return;
+
+    // Captured before the click reaches the card, so dismissing the menu by
+    // clicking outside of it (e.g. on the thumbnail) can't also trigger the
+    // card's own click handling (open video, toggle favorite, regenerate...).
+    function handleOutsideClick(e: MouseEvent) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenuPos(null);
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setContextMenuPos(null);
+    }
+
+    document.addEventListener('click', handleOutsideClick, true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [contextMenuPos]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +98,7 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
     return () => {
       cancelled = true;
     };
-  }, [video.id, video.thumbnail_path]);
+  }, [video.id, folderId, video.thumbnail_path]);
 
   async function handleRegenerateThumbnail(e: React.MouseEvent) {
     e.stopPropagation();
@@ -136,6 +166,23 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleCopyPath = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(video.path);
+    } catch (err) {
+      console.error('Failed to copy path:', err);
+      alert(`Failed to copy path: ${err}`);
+    }
+    setContextMenuPos(null);
+  };
+
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (folderId === null) {
@@ -157,7 +204,7 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
 
   return (
     <div className="video-card" onClick={handleClick}>
-      <div className="thumbnail-container">
+      <div className="thumbnail-container" onContextMenu={handleContextMenu}>
         {loading ? (
           <div className="thumbnail-loading">
             <div className="spinner-small"></div>
@@ -213,6 +260,19 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
           {video.codec && <span className="codec">{video.codec}</span>}
         </div>
       </div>
+      {contextMenuPos &&
+        createPortal(
+          <div
+            ref={contextMenuRef}
+            className="context-menu"
+            style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
+          >
+            <button className="context-menu-item" onClick={handleCopyPath}>
+              Copy Path
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

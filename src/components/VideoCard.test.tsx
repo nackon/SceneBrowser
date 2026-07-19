@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { invoke } from '@tauri-apps/api/core';
 import { VideoCard } from './VideoCard';
@@ -283,6 +283,133 @@ describe('VideoCard', () => {
 
       const img = document.querySelector('img.thumbnail') as HTMLImageElement | null;
       expect(img?.src).toContain('data:image/jpeg;base64,B');
+    });
+  });
+
+  describe('Context menu (issue #74)', () => {
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      });
+    });
+
+    it('shows only a Copy Path item on right-click, replacing the native menu', () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      const menu = document.querySelector('.context-menu');
+      expect(menu).toBeInTheDocument();
+      const items = menu!.querySelectorAll('.context-menu-item');
+      expect(items).toHaveLength(1);
+      expect(items[0].textContent).toBe('Copy Path');
+    });
+
+    it('copies the full video path and closes the menu when Copy Path is clicked', async () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      const copyItem = screen.getByText('Copy Path');
+      fireEvent.click(copyItem);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('/test/video.mp4');
+      await waitFor(() => {
+        expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the menu on outside click without opening the video', async () => {
+      const user = userEvent.setup();
+      const invokeMock = vi.mocked(invoke);
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      // Dismiss by clicking the thumbnail itself - the exact spot that would
+      // otherwise open the video - to prove the dismiss click doesn't leak through.
+      await user.click(thumbnailContainer!);
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+      expect(invokeMock).not.toHaveBeenCalledWith('open_video_with_player', expect.any(Object));
+    });
+
+    it('closes the menu on Escape', () => {
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+    });
+
+    it('closes an open menu when the recycled card is reassigned to a same-id video in another folder', () => {
+      // video ids are only unique within a folder, so a same-id video in a
+      // different folder must still be treated as a distinct card.
+      const { rerender } = render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      rerender(<VideoCard video={mockVideo} folderId={2} />);
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+    });
+
+    it('alerts the user when copying the path fails', async () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('denied'));
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      fireEvent.click(screen.getByText('Copy Path'));
+
+      await waitFor(() => {
+        expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('Failed to copy path'));
+      });
+
+      alertMock.mockRestore();
     });
   });
 });
