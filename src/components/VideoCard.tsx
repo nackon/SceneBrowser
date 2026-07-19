@@ -14,6 +14,7 @@ interface VideoCardProps {
 
 export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteToggled }: VideoCardProps) {
   const updateVideoFavorite = useVideoStore((state) => state.updateVideoFavorite);
+  const updateVideoThumbnail = useVideoStore((state) => state.updateVideoThumbnail);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -22,8 +23,13 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
   // The grid virtualizer recycles VideoCard instances across different videos as it
   // scrolls/filters, so an in-flight thumbnail read for a previous video must not be
   // allowed to overwrite state after this instance has been reassigned to a new one.
+  // video.id alone isn't a safe guard: ids are only unique within a folder, so a
+  // recycled card can be reassigned to a same-numbered video in a different folder -
+  // folderId must match too.
   const videoIdRef = useRef(video.id);
   videoIdRef.current = video.id;
+  const folderIdRef = useRef(folderId);
+  folderIdRef.current = folderId;
 
   // Reset per-video, non-thumbnail state whenever a recycled card is reassigned
   // to a different video, so stale flags/values from the previous video can't leak in.
@@ -66,13 +72,21 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
 
   async function handleRegenerateThumbnail(e: React.MouseEvent) {
     e.stopPropagation();
+    if (folderId === null) {
+      alert('Please select a folder first');
+      return;
+    }
     const videoId = video.id;
+    const requestFolderId = folderId;
+    const isSameCard = () =>
+      videoIdRef.current === videoId && folderIdRef.current === requestFolderId;
     setRegenerating(true);
     setError(false);
     try {
-      const thumbnailPath = await regenerateThumbnail(videoId);
+      const thumbnailPath = await regenerateThumbnail(requestFolderId, videoId);
       const dataUrl = await readThumbnail(thumbnailPath);
-      if (videoIdRef.current === videoId) {
+      if (isSameCard()) {
+        updateVideoThumbnail(videoId, thumbnailPath);
         setThumbnailUrl(dataUrl);
       }
       if (onThumbnailRegenerated) {
@@ -80,11 +94,11 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
       }
     } catch (err) {
       console.error('Failed to regenerate thumbnail:', err);
-      if (videoIdRef.current === videoId) {
+      if (isSameCard()) {
         setError(true);
       }
     } finally {
-      if (videoIdRef.current === videoId) {
+      if (isSameCard()) {
         setRegenerating(false);
       }
     }

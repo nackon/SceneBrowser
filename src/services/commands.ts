@@ -64,12 +64,12 @@ export interface ThumbnailProgress {
   current_file: string;
 }
 
-export async function generateThumbnail(videoId: number): Promise<string> {
-  return await invoke<string>('generate_thumbnail', { videoId });
+export async function generateThumbnail(folderId: number, videoId: number): Promise<string> {
+  return await invoke<string>('generate_thumbnail', { folderId, videoId });
 }
 
-export async function regenerateThumbnail(videoId: number): Promise<string> {
-  return await invoke<string>('regenerate_thumbnail', { videoId });
+export async function regenerateThumbnail(folderId: number, videoId: number): Promise<string> {
+  return await invoke<string>('regenerate_thumbnail', { folderId, videoId });
 }
 
 export async function generateThumbnailsBatch(
