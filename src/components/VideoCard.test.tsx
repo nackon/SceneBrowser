@@ -346,7 +346,9 @@ describe('VideoCard', () => {
       });
       expect(document.querySelector('.context-menu')).toBeInTheDocument();
 
-      await user.click(document.body);
+      // Dismiss by clicking the thumbnail itself - the exact spot that would
+      // otherwise open the video - to prove the dismiss click doesn't leak through.
+      await user.click(thumbnailContainer!);
 
       expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
       expect(invokeMock).not.toHaveBeenCalledWith('open_video_with_player', expect.any(Object));
@@ -368,6 +370,46 @@ describe('VideoCard', () => {
       });
 
       expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+    });
+
+    it('closes an open menu when the recycled card is reassigned to a same-id video in another folder', () => {
+      // video ids are only unique within a folder, so a same-id video in a
+      // different folder must still be treated as a distinct card.
+      const { rerender } = render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+      expect(document.querySelector('.context-menu')).toBeInTheDocument();
+
+      rerender(<VideoCard video={mockVideo} folderId={2} />);
+
+      expect(document.querySelector('.context-menu')).not.toBeInTheDocument();
+    });
+
+    it('alerts the user when copying the path fails', async () => {
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('denied'));
+
+      render(<VideoCard video={mockVideo} folderId={1} />);
+
+      const thumbnailContainer = document.querySelector('.thumbnail-container');
+      act(() => {
+        thumbnailContainer!.dispatchEvent(
+          new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 20 })
+        );
+      });
+
+      fireEvent.click(screen.getByText('Copy Path'));
+
+      await waitFor(() => {
+        expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('Failed to copy path'));
+      });
+
+      alertMock.mockRestore();
     });
   });
 });

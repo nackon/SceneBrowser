@@ -40,26 +40,31 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
     setIsFavorite(video.is_favorite === 1);
     setRegenerating(false);
     setContextMenuPos(null);
-  }, [video.id]);
+  }, [video.id, folderId]);
 
   useEffect(() => {
     if (!contextMenuPos) return;
 
-    function handleOutsideEvent(e: MouseEvent | KeyboardEvent) {
-      if (e instanceof KeyboardEvent) {
-        if (e.key === 'Escape') setContextMenuPos(null);
-        return;
-      }
+    // Captured before the click reaches the card, so dismissing the menu by
+    // clicking outside of it (e.g. on the thumbnail) can't also trigger the
+    // card's own click handling (open video, toggle favorite, regenerate...).
+    function handleOutsideClick(e: MouseEvent) {
       if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
         setContextMenuPos(null);
       }
     }
 
-    document.addEventListener('mousedown', handleOutsideEvent);
-    document.addEventListener('keydown', handleOutsideEvent);
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setContextMenuPos(null);
+    }
+
+    document.addEventListener('click', handleOutsideClick, true);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleOutsideEvent);
-      document.removeEventListener('keydown', handleOutsideEvent);
+      document.removeEventListener('click', handleOutsideClick, true);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [contextMenuPos]);
 
@@ -93,7 +98,7 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
     return () => {
       cancelled = true;
     };
-  }, [video.id, video.thumbnail_path]);
+  }, [video.id, folderId, video.thumbnail_path]);
 
   async function handleRegenerateThumbnail(e: React.MouseEvent) {
     e.stopPropagation();
@@ -173,6 +178,7 @@ export function VideoCard({ video, folderId, onThumbnailRegenerated, onFavoriteT
       await navigator.clipboard.writeText(video.path);
     } catch (err) {
       console.error('Failed to copy path:', err);
+      alert(`Failed to copy path: ${err}`);
     }
     setContextMenuPos(null);
   };
